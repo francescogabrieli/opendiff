@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "project": { "name": "small-review", "root": "." },
+  "review": {
+    "id": "small-review",
+    "title": "Update the request guard",
+    "summary": "A small review fixture showing one focused logic change and its test.",
+    "originalTask": "Update the request guard.",
+    "generatedAt": "2026-01-01T12:00:00.000Z"
+  },
+  "git": {
+    "baseRef": "HEAD",
+    "baseCommit": "fixture-base",
+    "targetRef": "WORKTREE",
+    "branch": "fixture/small",
+    "includeStaged": true,
+    "includeUnstaged": true,
+    "includeUntracked": true,
+    "fingerprint": "fixture-small",
+    "initialWorkingTree": { "clean": true, "preExistingChanges": [] }
+  },
+  "stats": { "filesChanged": 1, "filesAdded": 0, "filesModified": 1, "filesDeleted": 0, "additions": 2, "deletions": 1, "sections": 1, "testsChanged": 1 },
+  "sections": [
+    {
+      "id": "request-guard",
+      "order": 1,
+      "title": "Tighten the request guard",
+      "shortDescription": "Reject invalid requests before transport.",
+      "purpose": "Keep malformed requests out of the transport layer.",
+      "explanation": ["The guard now checks the required identifier before forwarding the request."],
+      "impact": ["Invalid requests fail locally with a predictable error."],
+      "references": [
+        { "id": "ref-request-guard", "file": "src/requestGuard.ts", "symbol": "validateRequest", "kind": "primary", "newLines": { "start": 4, "end": 5 }, "oldLines": { "start": 4, "end": 4 }, "description": "Adds the required identifier check." }
+      ],
+      "relatedTests": ["rejects a request without an identifier"]
+    }
+  ],
+  "tests": { "executed": [{ "command": "npm test -- request-guard", "status": "passed", "summary": "1 test passed.", "durationMs": 120 }], "notExecuted": [] },
+  "risks": [],
+  "assumptions": [],
+  "completion": { "status": "complete", "summary": "The fixture change is complete.", "remainingWork": [] }
+}

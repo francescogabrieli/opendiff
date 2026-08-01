@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opendiff.local/schema/review-1.0.json",
+  "title": "OpenDiff review",
+  "type": "object",
+  "required": ["schemaVersion", "project", "review", "git", "stats", "sections", "tests", "risks", "assumptions", "completion"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "project": { "type": "object", "required": ["name", "root"], "properties": { "name": { "type": "string" }, "root": { "type": "string" } } },
+    "review": { "type": "object", "required": ["id", "title", "summary", "originalTask", "generatedAt"], "properties": { "id": { "type": "string" }, "title": { "type": "string" }, "summary": { "type": "string" }, "originalTask": { "type": "string" }, "generatedAt": { "type": "string", "format": "date-time" } } },
+    "git": { "type": "object", "required": ["baseRef", "baseCommit", "targetRef", "includeStaged", "includeUnstaged", "includeUntracked"], "properties": { "baseRef": { "type": "string" }, "baseCommit": { "type": "string" }, "targetRef": { "type": "string" }, "branch": { "type": "string" }, "includeStaged": { "type": "boolean" }, "includeUnstaged": { "type": "boolean" }, "includeUntracked": { "type": "boolean" }, "fingerprint": { "type": "string" }, "initialWorkingTree": { "type": "object", "required": ["clean", "preExistingChanges"], "properties": { "clean": { "type": "boolean" }, "preExistingChanges": { "type": "array", "items": { "type": "string" } } } } } },
+    "stats": { "type": "object", "required": ["filesChanged", "additions", "deletions"], "properties": { "filesChanged": { "type": "integer", "minimum": 0 }, "filesAdded": { "type": "integer", "minimum": 0 }, "filesModified": { "type": "integer", "minimum": 0 }, "filesDeleted": { "type": "integer", "minimum": 0 }, "filesRenamed": { "type": "integer", "minimum": 0 }, "additions": { "type": "integer", "minimum": 0 }, "deletions": { "type": "integer", "minimum": 0 }, "sections": { "type": "integer", "minimum": 0 }, "testsChanged": { "type": "integer", "minimum": 0 } } },
+    "sections": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/section" } },
+    "tests": { "type": "object", "required": ["executed", "notExecuted"], "properties": { "executed": { "type": "array" }, "notExecuted": { "type": "array" } } },
+    "risks": { "type": "array" },
+    "assumptions": { "type": "array", "items": { "type": "string" } },
+    "completion": { "type": "object", "required": ["status", "summary", "remainingWork"], "properties": { "status": { "enum": ["complete", "partial", "blocked"] }, "summary": { "type": "string" }, "remainingWork": { "type": "array" } } }
+  },
+  "$defs": {
+    "reference": { "type": "object", "required": ["id", "file", "kind", "newLines", "oldLines", "description"], "properties": { "id": { "type": "string" }, "file": { "type": "string" }, "symbol": { "type": "string" }, "kind": { "enum": ["primary", "secondary", "test"] }, "newLines": { "type": "object", "required": ["start", "end"], "properties": { "start": { "type": "integer", "minimum": 1 }, "end": { "type": "integer", "minimum": 1 } } }, "oldLines": { "type": ["object", "null"] }, "description": { "type": "string" }, "resolved": { "type": "boolean" }, "resolutionError": { "type": "string" } } },
+    "section": { "type": "object", "required": ["id", "order", "title", "shortDescription", "purpose", "explanation", "impact", "references"], "properties": { "id": { "type": "string" }, "order": { "type": "integer", "minimum": 1 }, "title": { "type": "string" }, "shortDescription": { "type": "string", "maxLength": 120 }, "purpose": { "type": "string" }, "explanation": { "type": "array", "items": { "type": "string" } }, "impact": { "type": "array", "items": { "type": "string" } }, "references": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/reference" } } } }
+  }
+}

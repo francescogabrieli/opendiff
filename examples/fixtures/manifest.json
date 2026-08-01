@@ -1,0 +1,13 @@
+{
+  "description": "OpenDiff fixture catalogue. The browser harness exposes the same cases through ?fixture=.",
+  "fixtures": [
+    { "id": "small", "kind": "focused one-file review", "route": "/?fixture=small" },
+    { "id": "medium", "kind": "multi-file guided review", "route": "/?fixture=medium" },
+    { "id": "rename", "kind": "renamed file", "route": "/?fixture=rename" },
+    { "id": "deleted", "kind": "deleted file", "route": "/?fixture=deleted" },
+    { "id": "lockfile", "kind": "lockfile update", "route": "/?fixture=lockfile" },
+    { "id": "large", "kind": "virtualized long file", "route": "/?fixture=large" },
+    { "id": "invalid", "kind": "unresolved reference", "route": "/?fixture=invalid" },
+    { "id": "stale", "kind": "out-of-date review", "route": "/?fixture=stale" }
+  ]
+}

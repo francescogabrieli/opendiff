@@ -1,0 +1,24 @@
+{
+  "fingerprint": "fixture-small",
+  "baseRef": "HEAD",
+  "baseCommit": "fixture-base",
+  "renderedAt": "2026-01-01T12:00:00.000Z",
+  "files": [
+    {
+      "id": "file-request-guard",
+      "path": "src/requestGuard.ts",
+      "language": "TypeScript",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 1,
+      "sections": ["request-guard"],
+      "lines": [
+        { "id": "hunk-guard", "type": "hunk", "content": "@@ -3,3 +3,5 @@ export function validateRequest" },
+        { "id": "guard-context", "type": "context", "oldLine": 3, "newLine": 3, "content": "export function validateRequest(input: RequestInput) {" },
+        { "id": "guard-delete", "type": "deletion", "oldLine": 4, "content": "  return transport.send(input);", "referenceIds": ["ref-request-guard"] },
+        { "id": "guard-add", "type": "addition", "newLine": 4, "content": "  if (!input.id) throw new Error(\"missing id\");", "referenceIds": ["ref-request-guard"], "sectionIds": ["request-guard"] },
+        { "id": "guard-add-2", "type": "addition", "newLine": 5, "content": "  return transport.send(input);", "referenceIds": ["ref-request-guard"], "sectionIds": ["request-guard"] }
+      ]
+    }
+  ]
+}

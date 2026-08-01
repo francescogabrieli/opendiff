@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.DS_Store
+.agent-diffs/render/
+.agent-diffs/config.json
+.agent-diffs/review.json
+public/data/
+test-results/
+playwright-report/
