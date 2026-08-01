@@ -1,0 +1,698 @@
+/*
+ * OpenDiff — Linear Guided Review parity layer
+ *
+ * This stylesheet deliberately keeps the existing component behaviour intact
+ * while replacing the dashboard-like presentation with a flatter, quieter,
+ * document-oriented review surface. It is loaded after styles.css so that the
+ * visual direction remains isolated and easy to iterate on.
+ */
+
+:root {
+  --bg: #08090a;
+  --surface: #0b0c0e;
+  --surface-raised: #101114;
+  --surface-soft: #131419;
+  --surface-hover: #17181d;
+  --border: #202126;
+  --border-soft: #18191d;
+  --border-strong: #2b2d33;
+  --text: #f3f3f5;
+  --text-soft: #c4c5ca;
+  --muted: #8b8d96;
+  --subtle: #62646d;
+  --accent: #7c6ff2;
+  --accent-soft: #a49af8;
+  --accent-wash: rgba(124, 111, 242, 0.1);
+  --green: #69b77b;
+  --green-wash: rgba(59, 133, 78, 0.12);
+  --red: #d87582;
+  --red-wash: rgba(153, 48, 63, 0.13);
+  --yellow: #c99d5d;
+  --yellow-wash: rgba(145, 102, 38, 0.12);
+}
+
+body {
+  background: #08090a;
+}
+
+/* Linear uses an exceptionally quiet application chrome. */
+.topbar {
+  flex-basis: 40px;
+  padding: 0 12px;
+  background: #08090a;
+  border-bottom-color: #1b1c20;
+  backdrop-filter: none;
+}
+
+.topbar-brand {
+  min-width: 128px;
+  gap: 7px;
+}
+
+.brand-mark {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 4px;
+  background: #5e52d8;
+  transform: none;
+}
+
+.brand-mark span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d9d5ff;
+  box-shadow: none;
+}
+
+.brand-name {
+  font-size: 12px;
+  font-weight: 590;
+}
+
+.brand-version,
+.demo-badge {
+  border: 0;
+  background: transparent;
+  color: #555760;
+  padding: 0;
+  font-size: 9px;
+  text-transform: none;
+}
+
+.topbar-context {
+  justify-content: center;
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 11px;
+}
+
+.context-base {
+  border-left: 0;
+  margin-left: 2px;
+  padding-left: 2px;
+}
+
+.review-status {
+  font-size: 10px;
+}
+
+.status-dot {
+  width: 5px;
+  height: 5px;
+  box-shadow: none;
+}
+
+.icon-button,
+.mobile-panel-button {
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+}
+
+/* Merge the secondary header into the review document rather than presenting
+   it as a separate product dashboard row. */
+.review-header {
+  flex-basis: 58px;
+  min-height: 58px;
+  padding: 0 18px;
+  background: #0a0b0d;
+  border-bottom-color: #1b1c20;
+}
+
+.review-breadcrumb {
+  margin-bottom: 3px;
+  font-size: 9px;
+}
+
+.review-header h1 {
+  font-size: 14px;
+  font-weight: 590;
+}
+
+.review-original-task {
+  display: none;
+}
+
+.review-header-stats {
+  gap: 8px;
+  font-size: 10px;
+}
+
+.header-generated {
+  margin-left: 2px;
+  padding-left: 8px;
+}
+
+/* The previous 3-column dashboard is intentionally reduced to a restrained
+   navigation rail, a broad reading canvas and a contextual guide column. */
+.workspace {
+  grid-template-columns: 224px minmax(620px, 1fr) 300px;
+  background: #08090a;
+}
+
+.navigation-panel,
+.explanation-panel {
+  background: #0a0b0d;
+}
+
+.review-nav {
+  padding: 16px 8px 10px;
+}
+
+.side-nav-heading {
+  padding: 0 8px 12px;
+}
+
+.side-nav-kicker {
+  display: none;
+}
+
+.side-nav-title {
+  margin-top: 0;
+  color: #8d8f98;
+  font-size: 11px;
+  font-weight: 520;
+}
+
+.overview-nav-item,
+.section-nav-item {
+  border-radius: 5px;
+}
+
+.overview-nav-item {
+  min-height: 30px;
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+.overview-nav-item.is-active {
+  box-shadow: none;
+  background: #17181d;
+}
+
+.nav-divider {
+  margin: 10px 8px;
+}
+
+.nav-section-label {
+  padding: 0 8px 6px;
+  font-size: 9px;
+  letter-spacing: .04em;
+  text-transform: none;
+}
+
+.nav-count,
+.panel-label-count {
+  min-width: auto;
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.section-list {
+  gap: 0;
+}
+
+.section-nav-item {
+  gap: 7px;
+  padding: 7px 7px 8px 9px;
+}
+
+.section-nav-item:hover {
+  background: #121317;
+}
+
+.section-nav-item.is-active {
+  background: #18191f;
+}
+
+.section-nav-number {
+  flex-basis: 17px;
+  font-size: 9px;
+}
+
+.section-nav-copy {
+  gap: 2px;
+}
+
+.section-nav-copy strong {
+  font-size: 10.5px;
+  font-weight: 540;
+}
+
+.section-nav-copy span {
+  font-size: 9.5px;
+}
+
+.section-nav-copy small,
+.visited-mark,
+.section-rail,
+.nav-footer-actions {
+  display: none;
+}
+
+.nav-footer {
+  padding: 12px 8px 0;
+}
+
+.progress-track {
+  height: 2px;
+  border-radius: 0;
+}
+
+.diff-panel {
+  background: #0b0c0e;
+}
+
+.diff-toolbar {
+  flex-basis: 36px;
+  min-height: 36px;
+  padding: 0 12px 0 16px;
+  background: #0b0c0e;
+}
+
+.diff-toolbar-title,
+.toolbar-control {
+  font-size: 10px;
+}
+
+.toolbar-title-icon {
+  color: #6d6f78;
+}
+
+.diff-scroll {
+  padding: 0 0 96px;
+  background: #0b0c0e;
+}
+
+/* Replace dashboard cards with a compact editorial overview. */
+.overview-section {
+  max-width: none;
+  margin: 0;
+  padding: 38px clamp(28px, 5vw, 72px) 34px;
+  border-bottom-color: #1d1e22;
+}
+
+.overview-eyebrow {
+  margin-bottom: 16px;
+  color: #71737c;
+  font-size: 10px;
+}
+
+.eyebrow-mark {
+  color: #8d82ef;
+}
+
+.overview-heading-row {
+  max-width: 820px;
+}
+
+.overview-section h2 {
+  max-width: 700px;
+  margin-bottom: 12px;
+  font-size: 26px;
+  font-weight: 570;
+  letter-spacing: -.035em;
+}
+
+.overview-summary {
+  max-width: 680px;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.completion-badge {
+  margin-top: 0;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+}
+
+.overview-stats {
+  display: flex;
+  gap: 18px;
+  margin-top: 22px;
+  padding: 10px 0;
+  border-top: 1px solid #1c1d21;
+  border-bottom: 1px solid #1c1d21;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.stat-card-top {
+  gap: 5px;
+}
+
+.stat-label {
+  display: none;
+}
+
+.stat-value {
+  order: -1;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.stat-detail {
+  margin: 0;
+  font-size: 9px;
+}
+
+.overview-lower-grid {
+  grid-template-columns: minmax(0, 1.25fr) minmax(240px, .75fr);
+  max-width: 900px;
+  gap: 54px;
+  margin-top: 32px;
+}
+
+.section-kicker,
+.panel-label {
+  color: #777982;
+  font-size: 9px;
+  letter-spacing: .035em;
+  text-transform: none;
+}
+
+.section-intro {
+  margin-top: 6px;
+  font-size: 10px;
+}
+
+.overview-path-item {
+  grid-template-columns: 22px minmax(0, 1fr) 12px;
+  padding: 11px 1px;
+}
+
+.overview-path-item:hover {
+  padding-left: 3px;
+  background: transparent;
+}
+
+.path-copy strong {
+  font-size: 11px;
+}
+
+.path-copy span {
+  font-size: 10px;
+}
+
+.test-summary-row {
+  padding: 9px 1px;
+}
+
+/* Files form one continuous review document, not isolated cards. */
+.diff-files-heading {
+  max-width: none;
+  margin: 0;
+  padding: 16px clamp(28px, 5vw, 72px) 9px;
+  border-bottom: 1px solid #1c1d21;
+  font-size: 9px;
+  letter-spacing: .04em;
+  text-transform: none;
+}
+
+.diff-file-list {
+  max-width: none;
+  margin: 0;
+}
+
+.diff-file {
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid #1d1e22;
+  border-radius: 0;
+  background: #0b0c0e;
+}
+
+.diff-file.is-dimmed {
+  opacity: .42;
+}
+
+.file-header {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  min-height: 36px;
+  padding: 0 clamp(18px, 3vw, 38px);
+  border-bottom-color: #1c1d21;
+  border-radius: 0;
+  background: rgba(13, 14, 16, .97);
+  backdrop-filter: blur(12px);
+}
+
+.file-path {
+  font-size: 10.5px;
+}
+
+.file-language,
+.file-kind,
+.file-status {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.file-language,
+.file-status,
+.file-sections {
+  display: none;
+}
+
+.file-header-meta {
+  gap: 7px;
+}
+
+.diff-code {
+  padding: 6px 0 10px;
+  border-radius: 0;
+  background: #0b0c0e;
+}
+
+.diff-hunk-row,
+.diff-line-row {
+  grid-template-columns: 42px 42px 20px minmax(max-content, 1fr);
+  min-height: 20px;
+  font-size: 10.5px;
+  line-height: 20px;
+}
+
+.diff-hunk-row {
+  margin: 4px 0;
+  color: #8278c9;
+  background: rgba(100, 86, 201, .1);
+}
+
+.diff-line-row:hover {
+  background: rgba(255, 255, 255, .025);
+}
+
+.diff-line-row.is-dimmed {
+  opacity: .25;
+}
+
+.diff-line-row.is-selected,
+.diff-line-row.is-pulsing,
+.diff-line-row.is-reference-hover {
+  color: #f5f4fb;
+  background: rgba(112, 99, 220, .17);
+  box-shadow: inset 2px 0 0 #8c81ec;
+}
+
+.diff-line-addition {
+  background: rgba(52, 124, 71, .11);
+}
+
+.diff-line-deletion {
+  background: rgba(152, 49, 64, .11);
+}
+
+.diff-line-addition:hover {
+  background: rgba(52, 124, 71, .17);
+}
+
+.diff-line-deletion:hover {
+  background: rgba(152, 49, 64, .17);
+}
+
+.line-number {
+  color: #45474f;
+  font-size: 9px;
+}
+
+.line-code {
+  padding-right: 24px;
+}
+
+/* The guide column should read like margin notes attached to the diff. */
+.explanation-panel {
+  border-left-color: #1d1e22;
+}
+
+.explanation-panel-header {
+  flex-basis: 36px;
+  min-height: 36px;
+  padding: 0 10px 0 15px;
+}
+
+.explanation-heading {
+  color: #858790;
+  font-size: 10px;
+  font-weight: 520;
+}
+
+.explanation-heading-mark {
+  color: #8075df;
+}
+
+.explanation-inner {
+  padding: 24px 18px 36px;
+}
+
+.explanation-topline {
+  margin-bottom: 12px;
+  font-size: 9px;
+}
+
+.explanation-title {
+  margin-bottom: 18px;
+  font-size: 17px;
+  font-weight: 570;
+  line-height: 1.3;
+}
+
+.purpose-block,
+.explanation-block,
+.overview-panel-block,
+.note-block {
+  padding: 13px 0;
+}
+
+.purpose-block p,
+.explanation-block p,
+.note-block p,
+.impact-list {
+  font-size: 10.5px;
+  line-height: 1.62;
+}
+
+.reference-item {
+  border-radius: 4px;
+}
+
+.reference-item:hover {
+  background: #14151a;
+}
+
+.explanation-pagination button,
+.focus-first-button {
+  border-radius: 5px;
+}
+
+/* Keep transient states quiet and integrated with the document. */
+.stale-banner,
+.review-warning-banner {
+  min-height: 30px;
+  padding: 6px 16px;
+  font-size: 10px;
+}
+
+.toast {
+  border-radius: 6px;
+  background: #18191d;
+  border-color: #2b2d33;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .35);
+}
+
+@media (max-width: 1280px) {
+  .workspace {
+    grid-template-columns: 208px minmax(560px, 1fr) 276px;
+  }
+}
+
+@media (max-width: 1050px) {
+  .workspace {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .explanation-panel {
+    position: fixed;
+    z-index: 45;
+    top: 40px;
+    right: 0;
+    bottom: 0;
+    width: min(340px, 88vw);
+    transform: translateX(100%);
+    transition: transform 160ms ease;
+    box-shadow: -20px 0 50px rgba(0, 0, 0, .35);
+  }
+
+  .app-shell.explanation-open .explanation-panel {
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 760px) {
+  .workspace {
+    display: block;
+  }
+
+  .navigation-panel {
+    position: fixed;
+    z-index: 50;
+    top: 40px;
+    bottom: 0;
+    left: 0;
+    width: min(260px, 86vw);
+    transform: translateX(-100%);
+    transition: transform 160ms ease;
+    box-shadow: 20px 0 50px rgba(0, 0, 0, .35);
+  }
+
+  .app-shell.nav-open .navigation-panel {
+    transform: translateX(0);
+  }
+
+  .review-header {
+    padding-inline: 12px;
+  }
+
+  .review-header-stats,
+  .topbar-context,
+  .review-status {
+    display: none;
+  }
+
+  .overview-section {
+    padding: 28px 18px;
+  }
+
+  .overview-section h2 {
+    font-size: 22px;
+  }
+
+  .overview-stats {
+    flex-wrap: wrap;
+  }
+
+  .overview-lower-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .diff-files-heading,
+  .file-header {
+    padding-inline: 14px;
+  }
+}
