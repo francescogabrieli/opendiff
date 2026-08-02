@@ -1,0 +1,50 @@
+name: Feature proposal
+description: Propose an improvement to the guided-review workflow.
+title: "[Proposal]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What review or contributor problem is difficult today, and for whom?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe observable behavior without assuming a specific implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Agent skill
+        - CLI and Git collection
+        - Review schema
+        - Guided-review interface
+        - Export or packaging
+        - Contributor experience
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: implications
+    attributes:
+      label: Compatibility, privacy, or security implications
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and proposals.
+          required: true
+        - label: The proposal preserves local-first operation or explains why that boundary should change.
+          required: true

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -70,3 +70,11 @@ test("validates and renders a review document against the real diff", () => {
   assert.equal(renderedDiff.files[0].lines.some((line) => line.referenceIds?.includes("value-ref")), true);
 });
 
+test("reports its package version and rejects unknown options", () => {
+  const version = execFileSync(process.execPath, [cliPath.pathname, "--version"], { encoding: "utf8" }).trim();
+  assert.match(version, /^\d+\.\d+\.\d+/);
+
+  const invalid = spawnSync(process.execPath, [cliPath.pathname, "validate", "--unknown"], { encoding: "utf8" });
+  assert.equal(invalid.status, 1);
+  assert.match(invalid.stderr, /Unknown option or argument/);
+});

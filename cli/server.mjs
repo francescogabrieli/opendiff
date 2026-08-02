@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
+import { extname, join, relative, resolve, sep } from "node:path";
 import {
   collectDiff,
   getBaseCommit,
@@ -18,7 +18,7 @@ function readDocument(path) {
   try { return JSON.parse(readFileSync(path, "utf8")); } catch { return null; }
 }
 
-function createHandler(root) {
+export function createHandler(root) {
   const agentDir = join(root, ".agent-diffs");
   const reviewPath = join(agentDir, "review.json");
   const renderStatusPath = join(agentDir, "render", "status.json");
@@ -113,6 +113,81 @@ function createHandler(root) {
   };
 }
 
+const contentTypes = {
+  ".css": "text/css; charset=utf-8",
+  ".html": "text/html; charset=utf-8",
+  ".ico": "image/x-icon",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".js": "text/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".map": "application/json; charset=utf-8",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".webp": "image/webp",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+};
+
+function sendStaticFile(req, res, filePath) {
+  const size = statSync(filePath).size;
+  res.statusCode = 200;
+  res.setHeader("Content-Type", contentTypes[extname(filePath).toLowerCase()] || "application/octet-stream");
+  res.setHeader("Content-Length", size);
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Cache-Control", filePath.endsWith("index.html") ? "no-cache" : "public, max-age=31536000, immutable");
+  if (req.method === "HEAD") {
+    res.end();
+    return;
+  }
+  createReadStream(filePath).pipe(res);
+}
+
+export function createStaticHandler(rendererRoot) {
+  const absoluteRoot = resolve(rendererRoot);
+  const indexPath = join(absoluteRoot, "index.html");
+
+  return (req, res) => {
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      res.statusCode = 405;
+      res.setHeader("Allow", "GET, HEAD");
+      res.end("Method Not Allowed");
+      return;
+    }
+
+    let pathname;
+    try {
+      pathname = decodeURIComponent(new URL(req.url || "/", "http://localhost").pathname);
+    } catch {
+      res.statusCode = 400;
+      res.end("Bad Request");
+      return;
+    }
+
+    const requestedPath = pathname === "/" ? indexPath : resolve(absoluteRoot, `.${pathname}`);
+    const isInsideRoot = requestedPath === absoluteRoot || (!relative(absoluteRoot, requestedPath).startsWith("..") && !relative(absoluteRoot, requestedPath).startsWith(sep));
+    if (!isInsideRoot) {
+      res.statusCode = 403;
+      res.end("Forbidden");
+      return;
+    }
+
+    const filePath = existsSync(requestedPath) && statSync(requestedPath).isFile() ? requestedPath : indexPath;
+    if (!existsSync(filePath)) {
+      res.statusCode = 503;
+      res.end("The OpenDiff renderer has not been built.");
+      return;
+    }
+    sendStaticFile(req, res, filePath);
+  };
+}
+
+export function createRequestHandler(repositoryRoot, rendererRoot) {
+  const dataHandler = createHandler(repositoryRoot);
+  const staticHandler = createStaticHandler(rendererRoot);
+  return (req, res) => dataHandler(req, res, () => staticHandler(req, res));
+}
+
 export function createOpenDiffPlugin(root = process.cwd()) {
   const handler = createHandler(root);
   return {
@@ -125,4 +200,3 @@ export function createOpenDiffPlugin(root = process.cwd()) {
     },
   };
 }
-

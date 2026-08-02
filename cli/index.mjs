@@ -3,8 +3,10 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, copyFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { execFileSync, spawn } from "node:child_process";
-import { createServer as createNetServer } from "node:net";
+import { createServer as createHttpServer } from "node:http";
+import { createRequestHandler } from "./server.mjs";
 import {
   collectDiff as collectGitDiff,
   defaultConfig as gitDefaultConfig,
@@ -14,6 +16,9 @@ import {
 import { formatZodIssues, reviewDocumentSchema } from "./schema.mjs";
 
 const root = process.cwd();
+const packageRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
+const rendererRoot = join(packageRoot, "dist");
+const packageMetadata = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
 const agentDir = join(root, ".agent-diffs");
 const reviewPath = join(agentDir, "review.json");
 const renderDir = join(agentDir, "render");
@@ -32,7 +37,7 @@ Commands:
   skill install         Install the OpenDiff skill for Codex
   validate              Validate review.json and its diff references
   render                Materialize review and the real Git diff for the web app
-  open                  Start a local Vite server and print the URL
+  open                  Start the local renderer and print the URL
   review                Validate, render, and open the review
   export --output PATH  Export a portable review folder
 
@@ -40,9 +45,9 @@ Options:
   --base REF            Diff base (default: HEAD)
   --context N           Context lines (default: 5)
   --port PORT           Server port (default: 4173)
-  --theme dark          Use the focused dark renderer (default)
   --no-open             Do not open a browser
   --force               Replace an existing installed skill
+  --version             Print the installed OpenDiff version
   --help                Show this help
 `);
 }
@@ -85,17 +90,25 @@ function readJson(path) {
 }
 
 function getOptions(argv) {
-  const options = { base: null, context: null, port: 4173, open: true, output: null, force: false, theme: "dark" };
+  const options = { base: null, context: null, port: 4173, open: true, output: null, force: false };
+  const valueAfter = (option, index) => {
+    const value = argv[index + 1];
+    if (!value || value.startsWith("--")) throw new Error(`${option} requires a value.`);
+    return value;
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
-    if (arg === "--base") options.base = argv[++index];
-    else if (arg === "--context") options.context = Number(argv[++index]);
-    else if (arg === "--port") options.port = Number(argv[++index]);
-    else if (arg === "--output") options.output = argv[++index];
+    if (arg === "--base") options.base = valueAfter(arg, index++);
+    else if (arg === "--context") options.context = Number(valueAfter(arg, index++));
+    else if (arg === "--port") options.port = Number(valueAfter(arg, index++));
+    else if (arg === "--output") options.output = valueAfter(arg, index++);
     else if (arg === "--no-open") options.open = false;
     else if (arg === "--force") options.force = true;
-    else if (arg === "--theme") options.theme = argv[++index] || "dark";
+    else if (arg === "install" && index === 0) continue;
+    else throw new Error(`Unknown option or argument “${arg}”. Run agent-diffs --help.`);
   }
+  if (options.context !== null && (!Number.isInteger(options.context) || options.context < 1)) throw new Error("--context must be a positive integer.");
+  if (!Number.isInteger(options.port) || options.port < 1 || options.port > 65535) throw new Error("--port must be an integer between 1 and 65535.");
   return options;
 }
 
@@ -223,9 +236,11 @@ function validateReview({ reportOnly = false, options = {} } = {}) {
 function init() {
   if (!getGitRoot()) return fail("OpenDiff could not find a Git repository from the current directory. Run the command inside a repository.");
   mkdirSync(agentDir, { recursive: true });
-  if (!existsSync(join(agentDir, "config.json"))) writeFileSync(join(agentDir, "config.json"), `${JSON.stringify(defaultConfig, null, 2)}\n`);
+  const configPath = join(agentDir, "config.json");
+  const createdConfig = !existsSync(configPath);
+  if (createdConfig) writeFileSync(configPath, `${JSON.stringify(defaultConfig, null, 2)}\n`);
   const addedGitignore = ensureGitignoreEntry();
-  console.log(`Created ${relative(root, agentDir)}/config.json`);
+  console.log(`${createdConfig ? "Created" : "Using existing"} ${relative(root, configPath)}`);
   if (addedGitignore) console.log("Added .agent-diffs/ to .gitignore");
   console.log("Install the agent instruction with: agent-diffs skill install");
   console.log("Generate .agent-diffs/review.json with the OpenDiff skill, then run agent-diffs review.");
@@ -261,7 +276,7 @@ function render(options) {
 }
 
 function installSkill(options) {
-  const source = join(root, "skills", "agent-diffs", "SKILL.md");
+  const source = join(packageRoot, "skills", "agent-diffs", "SKILL.md");
   if (!existsSync(source)) return fail("The bundled OpenDiff skill could not be found in this checkout.");
   const candidates = [
     join(homedir(), ".codex", "skills"),
@@ -288,54 +303,57 @@ function openBrowser(url) {
   try { spawn(command, args, { detached: true, stdio: "ignore" }).unref(); } catch { /* The URL is still printed. */ }
 }
 
-function findAvailablePort(start) {
-  return new Promise((resolvePort, reject) => {
-    const probe = createNetServer();
-    probe.once("error", (error) => {
-      if (error.code === "EADDRINUSE") {
-        resolvePort(findAvailablePort(start + 1));
-      } else {
-        reject(error);
-      }
-    });
-    probe.listen(start, "127.0.0.1", () => {
-      probe.close(() => resolvePort(start));
-    });
-  });
-}
-
 async function openServer(options) {
-  const port = await findAvailablePort(Number(options.port) || 4173);
-  const url = `http://localhost:${port}`;
-  const child = spawn("npm", ["run", "dev", "--", "--host", "127.0.0.1", "--port", String(port)], {
-    cwd: root,
-    stdio: "inherit",
+  if (!existsSync(join(rendererRoot, "index.html"))) {
+    return fail("The bundled renderer is missing. Run `npm run build` in the OpenDiff checkout and try again.");
+  }
+  const preferredPort = Number(options.port) || 4173;
+  const server = createHttpServer(createRequestHandler(root, rendererRoot));
+  const listen = (port) => new Promise((resolveListen, reject) => {
+    const onError = (error) => {
+      server.off("listening", onListening);
+      if (error.code === "EADDRINUSE") resolveListen(listen(port + 1));
+      else reject(error);
+    };
+    const onListening = () => {
+      server.off("error", onError);
+      resolveListen();
+    };
+    server.once("error", onError);
+    server.once("listening", onListening);
+    server.listen(port, "127.0.0.1");
   });
+  await listen(preferredPort);
+  server.on("error", (error) => fail(`Local renderer error: ${error.message}`));
+  const address = server.address();
+  const port = typeof address === "object" && address ? address.port : preferredPort;
+  const url = `http://localhost:${port}`;
   console.log(`OpenDiff review starting at ${url}`);
-  if (options.open) setTimeout(() => openBrowser(url), 850);
-  child.on("error", (error) => fail(`Could not start the local renderer: ${error.message}`));
+  if (options.open && loadConfig().openBrowser !== false) setTimeout(() => openBrowser(url), 850);
 }
 
 function exportReview(options) {
   const result = validateReview({ reportOnly: true, options });
   if (!result || result.errors.length) return fail("The review cannot be exported until the blocking validation errors are fixed.");
   const output = resolve(root, options.output || "agent-diffs-export");
-  if (existsSync(join(root, "dist"))) cpSync(join(root, "dist"), output, { recursive: true, force: true });
+  if (!existsSync(join(rendererRoot, "index.html"))) return fail("The bundled renderer is missing. Run `npm run build` in the OpenDiff checkout and try again.");
+  cpSync(rendererRoot, output, { recursive: true, force: true });
   mkdirSync(join(output, "data"), { recursive: true });
   const reviewDocument = { ...result.document, stats: { ...result.document.stats, ...result.collected.stats, sections: result.document.sections.length }, git: { ...result.document.git, fingerprint: result.collected.fingerprint } };
   const files = attachReviewReferences(reviewDocument, result.collected.files);
   writeFileSync(join(output, "data", "review.json"), `${JSON.stringify(reviewDocument, null, 2)}\n`);
   writeFileSync(join(output, "data", "diff.json"), `${JSON.stringify({ files, fingerprint: result.collected.fingerprint, baseRef: result.base, baseCommit: getBaseCommit(root, result.base), renderedAt: new Date().toISOString() }, null, 2)}\n`);
   writeFileSync(join(output, "data", "status.json"), `${JSON.stringify({ fingerprint: result.collected.fingerprint, baseRef: result.base, baseCommit: getBaseCommit(root, result.base) }, null, 2)}\n`);
-  writeFileSync(join(output, "README.txt"), "This folder contains the local OpenDiff review data. Serve it beside the built web renderer.\n");
+  writeFileSync(join(output, "README.txt"), "This folder contains a portable OpenDiff review. Serve this directory with any local static file server.\n");
   console.log(`Exported review data to ${relative(root, output)}`);
 }
 
 const [command = "help", ...argv] = process.argv.slice(2);
-const options = getOptions(argv);
 
 try {
+  const options = getOptions(argv);
   if (command === "help" || command === "--help" || command === "-h") printHelp();
+  else if (command === "--version" || command === "-v" || command === "version") console.log(packageMetadata.version);
   else if (command === "init") init();
   else if (command === "skill" && argv[0] === "install") installSkill(options);
   else if (command === "validate") validateReview({ options });

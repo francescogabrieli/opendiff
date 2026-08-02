@@ -8,7 +8,7 @@ import {
   FileCode2,
   GitBranch,
   GitCommitHorizontal,
-  Info,
+  GitPullRequest,
   Link2,
   Maximize2,
   MoreHorizontal,
@@ -42,6 +42,7 @@ type LoadState =
   | { status: "error"; error: unknown };
 
 type ReviewView = "activity" | "diff" | "guide";
+type DiffMode = "unified" | "split";
 
 function IconButton({
   label,
@@ -159,7 +160,7 @@ function focusedLines(file: DiffFile, references: ReviewReference[], context = 4
       output.push({
         id: `guide-gap-${file.id}-${previous}-${index}`,
         type: "hunk",
-        content: "⋯",
+        content: `${index - previous - 1} unchanged lines`,
       });
     }
     output.push(file.lines[index]);
@@ -233,12 +234,129 @@ function DiffLineView({
   );
 }
 
+type SplitRow =
+  | { id: string; hunk: DiffLine }
+  | { id: string; oldLine?: DiffLine; newLine?: DiffLine };
+
+function splitRows(lines: DiffLine[]): SplitRow[] {
+  const rows: SplitRow[] = [];
+
+  for (let index = 0; index < lines.length;) {
+    const line = lines[index];
+    if (line.type === "hunk") {
+      rows.push({ id: line.id, hunk: line });
+      index += 1;
+      continue;
+    }
+
+    if (line.type === "context") {
+      rows.push({ id: line.id, oldLine: line, newLine: line });
+      index += 1;
+      continue;
+    }
+
+    if (line.type === "deletion") {
+      const deletions: DiffLine[] = [];
+      const additions: DiffLine[] = [];
+      while (lines[index]?.type === "deletion") deletions.push(lines[index++]);
+      while (lines[index]?.type === "addition") additions.push(lines[index++]);
+      const count = Math.max(deletions.length, additions.length);
+      for (let pairIndex = 0; pairIndex < count; pairIndex += 1) {
+        rows.push({
+          id: `split-${deletions[pairIndex]?.id ?? "blank"}-${additions[pairIndex]?.id ?? "blank"}`,
+          oldLine: deletions[pairIndex],
+          newLine: additions[pairIndex],
+        });
+      }
+      continue;
+    }
+
+    rows.push({ id: `split-new-${line.id}`, newLine: line });
+    index += 1;
+  }
+
+  return rows;
+}
+
+function SplitLineCell({
+  fileId,
+  line,
+  side,
+  highlighted,
+  selected,
+  onSelect,
+}: {
+  fileId: string;
+  line?: DiffLine;
+  side: "old" | "new";
+  highlighted?: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  if (!line) return <span className="lg-split-line is-empty" aria-hidden="true" />;
+  const marker = line.type === "addition" ? "+" : line.type === "deletion" ? "−" : " ";
+  const lineNumber = side === "old" ? line.oldLine : line.newLine;
+
+  return (
+    <button
+      type="button"
+      className={`lg-split-line diff-line-row lg-line-${line.type} ${selected ? "is-selected" : ""}`}
+      onClick={onSelect}
+      data-testid={side === "new" || line.type === "deletion" ? `diff-line-${fileId}-${line.id}` : undefined}
+    >
+      <span className="lg-line-number">{lineNumber ?? ""}</span>
+      <span className="lg-line-marker">{marker}</span>
+      <code>
+        {highlighted ? <span dangerouslySetInnerHTML={{ __html: highlighted }} /> : fallbackTokenize(line.content)}
+      </code>
+    </button>
+  );
+}
+
+function SplitDiffView({
+  fileId,
+  lines,
+  highlightedLines,
+  selectedLineId,
+  onLineSelect,
+}: {
+  fileId: string;
+  lines: DiffLine[];
+  highlightedLines: Record<string, string>;
+  selectedLineId: string;
+  onLineSelect: (line: DiffLine) => void;
+}) {
+  return (
+    <div className="lg-code-block lg-split-code" role="table" aria-label={`Split diff for ${fileId}`}>
+      {splitRows(lines).map((row) => {
+        if ("hunk" in row) {
+          return (
+            <div className="lg-hunk-row" key={row.id}>
+              <span className="lg-hunk-gutter" />
+              <code>{row.hunk.content}</code>
+            </div>
+          );
+        }
+        return (
+          <div className="lg-split-row" key={row.id}>
+            <SplitLineCell fileId={fileId} line={row.oldLine} side="old" highlighted={row.oldLine ? highlightedLines[row.oldLine.id] : undefined} selected={selectedLineId === row.oldLine?.id} onSelect={() => row.oldLine && onLineSelect(row.oldLine)} />
+            <SplitLineCell fileId={fileId} line={row.newLine} side="new" highlighted={row.newLine ? highlightedLines[row.newLine.id] : undefined} selected={selectedLineId === row.newLine?.id} onSelect={() => row.newLine && onLineSelect(row.newLine)} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function DiffFileCard({
   file,
   references,
   registerRef,
   onCopy,
   forceOpen,
+  diffMode,
+  reviewed,
+  onReviewedChange,
   selectedLineId,
   onLineSelect,
 }: {
@@ -247,11 +365,13 @@ function DiffFileCard({
   registerRef: (element: HTMLElement | null) => void;
   onCopy: () => void;
   forceOpen: boolean;
+  diffMode: DiffMode;
+  reviewed: boolean;
+  onReviewedChange: () => void;
   selectedLineId: string;
   onLineSelect: (line: DiffLine) => void;
 }) {
   const [expanded, setExpanded] = useState(forceOpen);
-  const [reviewed, setReviewed] = useState(false);
   const [highlightedLines, setHighlightedLines] = useState<Record<string, string>>({});
   const lines = useMemo(() => focusedLines(file, references), [file, references]);
 
@@ -295,7 +415,7 @@ function DiffFileCard({
           <button
             type="button"
             className={`lg-reviewed ${reviewed ? "is-reviewed" : ""}`}
-            onClick={() => setReviewed((value) => !value)}
+            onClick={onReviewedChange}
             aria-pressed={reviewed}
           >
             <span>{reviewed ? <Check size={11} /> : null}</span>
@@ -314,18 +434,22 @@ function DiffFileCard({
         file.binary || file.status === "binary" ? (
           <div className="lg-binary-file">Binary file — text diff unavailable.</div>
         ) : (
-          <div className="lg-code-block" role="table" aria-label={`Diff for ${file.path}`}>
-            {lines.map((line) => (
-              <DiffLineView
-                key={line.id}
-                fileId={file.id}
-                line={line}
-                highlighted={highlightedLines[line.id]}
-                selected={selectedLineId === line.id}
-                onSelect={() => onLineSelect(line)}
-              />
-            ))}
-          </div>
+          diffMode === "split" ? (
+            <SplitDiffView fileId={file.id} lines={lines} highlightedLines={highlightedLines} selectedLineId={selectedLineId} onLineSelect={onLineSelect} />
+          ) : (
+            <div className="lg-code-block" role="table" aria-label={`Diff for ${file.path}`}>
+              {lines.map((line) => (
+                <DiffLineView
+                  key={line.id}
+                  fileId={file.id}
+                  line={line}
+                  highlighted={highlightedLines[line.id]}
+                  selected={selectedLineId === line.id}
+                  onSelect={() => onLineSelect(line)}
+                />
+              ))}
+            </div>
+          )
         )
       ) : null}
     </article>
@@ -392,7 +516,31 @@ function ReviewGuide({
   const [selectedLineId, setSelectedLineId] = useState(
     () => window.location.hash.slice(1).split("/")[1] ?? "",
   );
-  const [contextLines, setContextLines] = useState(5);
+  const [contextLines, setContextLines] = useState(() => {
+    const stored = Number(window.localStorage.getItem(`opendiffs:${review.review.id}:context`));
+    return stored === 3 || stored === 5 || stored === 8 ? stored : 5;
+  });
+  const [diffMode, setDiffMode] = useState<DiffMode>(() =>
+    window.localStorage.getItem(`opendiffs:${review.review.id}:diff-mode`) === "split" ? "split" : "unified",
+  );
+  const [structuralHighlighting, setStructuralHighlighting] = useState(
+    () => window.localStorage.getItem(`opendiffs:${review.review.id}:structural`) !== "false",
+  );
+  const [wrapLines, setWrapLines] = useState(
+    () => window.localStorage.getItem(`opendiffs:${review.review.id}:wrap`) === "true",
+  );
+  const [reviewedFileIds, setReviewedFileIds] = useState<Set<string>>(() => {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(`opendiffs:${review.review.id}:reviewed`) ?? "[]");
+      return new Set(Array.isArray(stored) ? stored.filter((value): value is string => typeof value === "string") : []);
+    } catch {
+      return new Set();
+    }
+  });
+  const [starred, setStarred] = useState(
+    () => window.localStorage.getItem(`opendiffs:${review.review.id}:starred`) === "true",
+  );
+  const [splitAvailable, setSplitAvailable] = useState(() => window.innerWidth >= 960);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [technicalOpen, setTechnicalOpen] = useState(false);
@@ -400,6 +548,7 @@ function ReviewGuide({
   const guideScrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const fileRefs = useRef<Record<string, HTMLElement | null>>({});
+  const initialContextLines = useRef(contextLines);
 
   const activeIndex = Math.max(
     0,
@@ -415,6 +564,43 @@ function ReviewGuide({
     window.localStorage.setItem(`opendiffs:${review.review.id}:view`, activeView);
   }, [activeView, review.review.id]);
 
+  useEffect(() => {
+    window.localStorage.setItem(`opendiffs:${review.review.id}:context`, String(contextLines));
+    window.localStorage.setItem(`opendiffs:${review.review.id}:diff-mode`, diffMode);
+    window.localStorage.setItem(`opendiffs:${review.review.id}:structural`, String(structuralHighlighting));
+    window.localStorage.setItem(`opendiffs:${review.review.id}:wrap`, String(wrapLines));
+    window.localStorage.setItem(`opendiffs:${review.review.id}:reviewed`, JSON.stringify([...reviewedFileIds]));
+    window.localStorage.setItem(`opendiffs:${review.review.id}:starred`, String(starred));
+  }, [contextLines, diffMode, review.review.id, reviewedFileIds, starred, structuralHighlighting, wrapLines]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const available = window.innerWidth >= 960;
+      setSplitAvailable(available);
+      if (!available) setDiffMode("unified");
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const toggleReviewed = useCallback((fileId: string) => {
+    setReviewedFileIds((current) => {
+      const next = new Set(current);
+      if (next.has(fileId)) next.delete(fileId);
+      else next.add(fileId);
+      return next;
+    });
+  }, []);
+
+  const changeContextLines = useCallback((value: number) => {
+    setContextLines(value);
+    void onReload(value);
+  }, [onReload]);
+
+  useEffect(() => {
+    if (initialContextLines.current !== 5) void onReload(initialContextLines.current);
+  }, [onReload]);
+
   const selectView = useCallback((view: ReviewView) => {
     setActiveView(view);
     setSettingsOpen(false);
@@ -423,12 +609,12 @@ function ReviewGuide({
   }, [diff.files]);
 
   const selectSection = useCallback(
-    (index: number, scroll = true) => {
+    (index: number, scroll = true, behavior: ScrollBehavior = "smooth") => {
       const bounded = Math.max(0, Math.min(review.sections.length - 1, index));
       const section = review.sections[bounded];
       if (!section) return;
       setActiveSectionId(section.id);
-      if (scroll) sectionRefs.current[section.id]?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (scroll) sectionRefs.current[section.id]?.scrollIntoView({ behavior, block: "start" });
     },
     [review.sections],
   );
@@ -437,23 +623,33 @@ function ReviewGuide({
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
       if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "b" && activeView !== "activity") {
+        event.preventDefault();
+        if (splitAvailable) setDiffMode((current) => current === "split" ? "unified" : "split");
+        return;
+      }
+      if (event.key === "Escape" && settingsOpen) {
+        event.preventDefault();
+        setSettingsOpen(false);
+        return;
+      }
       if (activeView !== "guide") return;
       if (event.key === "j") {
         event.preventDefault();
-        selectSection(activeIndex + 1);
+        selectSection(activeIndex + 1, true, "auto");
       }
       if (event.key === "k") {
         event.preventDefault();
-        selectSection(activeIndex - 1);
+        selectSection(activeIndex - 1, true, "auto");
       }
       if (event.key === "Escape") {
         event.preventDefault();
-        selectSection(0);
+        selectSection(0, true, "auto");
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeIndex, activeView, selectSection]);
+  }, [activeIndex, activeView, selectSection, settingsOpen, splitAvailable]);
 
   const selectFile = useCallback((section: ReviewSection, file: DiffFile, reference: ReviewReference) => {
     const key = `${section.id}:${file.id}`;
@@ -498,25 +694,24 @@ function ReviewGuide({
   const issueKey = `${review.project.name.slice(0, 4).toUpperCase()}-${review.review.id.replace(/\D/g, "").slice(-4) || "1"}`;
 
   return (
-    <div className="lg-app" data-testid="guided-review">
+    <div className={`lg-app ${structuralHighlighting ? "is-structural" : ""} ${wrapLines ? "is-wrapped" : ""}`} data-testid="guided-review">
+      <a className="lg-skip-link" href="#review-content">Skip to review</a>
       <header className="lg-topbar">
         <div className="lg-pr-context">
           <span className="lg-issue-mark" />
           <strong>{issueKey}</strong>
           <ChevronRight size={13} />
+          <GitPullRequest className="lg-pr-icon" size={13} />
           <span className="lg-pr-title">[{issueKey}] {review.review.title}</span>
           <span className="lg-top-additions">+{review.stats.additions}</span>
           <span className="lg-top-deletions">−{review.stats.deletions}</span>
-          <IconButton label="Star review"><Star size={14} /></IconButton>
-          <IconButton label="More review actions"><MoreHorizontal size={15} /></IconButton>
+          <IconButton label={starred ? "Unstar review" : "Star review"} onClick={() => setStarred((value) => !value)} active={starred}><Star size={14} fill={starred ? "currentColor" : "none"} /></IconButton>
+          <IconButton label="More review actions" onClick={() => setTechnicalOpen((value) => !value)} active={technicalOpen}><MoreHorizontal size={15} /></IconButton>
         </div>
         <div className="lg-topbar-actions">
           <IconButton label="Copy review link" onClick={() => void copyText(window.location.href, "Review link copied")}><Link2 size={14} /></IconButton>
           <IconButton label="Refresh review" onClick={() => void refresh()}><RefreshCw size={14} className={refreshing ? "is-spinning" : ""} /></IconButton>
           <IconButton label="Enter fullscreen" onClick={() => void document.documentElement.requestFullscreen?.()}><Maximize2 size={14} /></IconButton>
-          <IconButton label="Technical information" onClick={() => setTechnicalOpen((value) => !value)} active={technicalOpen}>
-            <Info size={14} />
-          </IconButton>
         </div>
       </header>
 
@@ -540,8 +735,11 @@ function ReviewGuide({
           </IconButton>
           {settingsOpen ? (
             <div className="lg-settings-menu">
-              <div className="lg-view-switch"><button type="button" disabled>Split</button><button type="button" className="is-active">Unified</button></div>
-              <div className="lg-settings-row"><span>Context lines</span><button type="button" data-testid="context-control" onClick={() => setContextLines((value) => (value === 8 ? 3 : value + 2))}>{contextLines} <ChevronDown size={12} /></button></div>
+              <div className="lg-view-switch" aria-label="Diff layout">
+                <button type="button" className={diffMode === "split" ? "is-active" : ""} disabled={!splitAvailable} title={splitAvailable ? "Split view (⌘B)" : "Split view requires a wider window"} onClick={() => setDiffMode("split")}>Split</button>
+                <button type="button" className={diffMode === "unified" ? "is-active" : ""} onClick={() => setDiffMode("unified")}>Unified</button>
+              </div>
+              <div className="lg-settings-row"><span>Context lines</span><button type="button" className="lg-context-trigger" data-testid="context-control" onClick={() => changeContextLines(contextLines === 8 ? 3 : contextLines + 2)}>{contextLines} <ChevronDown size={12} /></button></div>
               <div className="lg-context-options" role="menu" aria-label="Context lines">
                 {[3, 5, 8].map((value) => (
                   <button
@@ -551,23 +749,22 @@ function ReviewGuide({
                     key={value}
                     className={contextLines === value ? "is-active" : ""}
                     onClick={() => {
-                      setContextLines(value);
-                      void onReload(value);
+                      changeContextLines(value);
                     }}
                   >
                     {value} lines {contextLines === value ? <Check size={12} /> : null}
                   </button>
                 ))}
               </div>
-              <div className="lg-settings-row"><span>Structural highlighting</span><span className="lg-toggle is-on" /></div>
-              <div className="lg-settings-row"><span>Wrap lines</span><span className="lg-toggle" /></div>
+              <div className="lg-settings-row"><span>Structural highlighting</span><button type="button" role="switch" aria-label="Structural highlighting" aria-checked={structuralHighlighting} className={`lg-toggle ${structuralHighlighting ? "is-on" : ""}`} onClick={() => setStructuralHighlighting((value) => !value)}><span /></button></div>
+              <div className="lg-settings-row"><span>Wrap lines</span><button type="button" role="switch" aria-label="Wrap lines" aria-checked={wrapLines} className={`lg-toggle ${wrapLines ? "is-on" : ""}`} onClick={() => setWrapLines((value) => !value)}><span /></button></div>
               <div className="lg-settings-row"><span>Code theme</span><strong>Linear Dark</strong></div>
             </div>
           ) : null}
         </div> : null}
       </nav>
 
-      <main className="lg-guide-scroll diff-scroll" ref={guideScrollRef}>
+      <main id="review-content" className="lg-guide-scroll diff-scroll" ref={guideScrollRef}>
         {activeView === "activity" ? (
           <section className="lg-mode-view lg-activity-view" data-testid="activity-view" aria-labelledby="activity-title">
             <header className="lg-mode-header">
@@ -624,6 +821,9 @@ function ReviewGuide({
                     file={file}
                     references={[]}
                     forceOpen={expandedFileKey === key}
+                    diffMode={diffMode}
+                    reviewed={reviewedFileIds.has(file.id)}
+                    onReviewedChange={() => toggleReviewed(file.id)}
                     selectedLineId={selectedLineId}
                     registerRef={(element) => { fileRefs.current[key] = element; }}
                     onCopy={() => void copyText(file.path, "File path copied")}
@@ -646,14 +846,6 @@ function ReviewGuide({
                 <span>OpenDiff</span><span>·</span><span>{review.project.name}</span><span>·</span>
                 <GitBranch size={12} /><span>{review.git.branch}</span><span>←</span>
                 <GitCommitHorizontal size={12} /><span>{review.git.baseCommit}</span>
-              </div>
-              <p>{review.review.summary}</p>
-              <div className="lg-review-facts">
-                <span>{review.stats.filesChanged} files changed</span>
-                <span className="lg-additions">+{review.stats.additions}</span>
-                <span className="lg-deletions">−{review.stats.deletions}</span>
-                <span>·</span><span>{formatReviewTime(review.review.generatedAt)}</span>
-                <span className={`lg-review-state ${bundle.stale ? "is-stale" : ""}`}><span />{bundle.stale ? "Review out of date" : "Ready to review"}</span>
               </div>
             </header>
 
@@ -689,7 +881,7 @@ function ReviewGuide({
                     <div className="lg-section-diffs" aria-label={`Diffs for ${section.title}`}>
                       {files.map((file) => {
                         const key = `${section.id}:${file.id}`;
-                        return <DiffFileCard key={key} file={file} references={referencesForFile(section, file)} forceOpen={expandedFileKey === key} selectedLineId={selectedLineId} registerRef={(element) => { fileRefs.current[key] = element; }} onCopy={() => void copyText(file.path, "File path copied")} onLineSelect={(line) => { setExpandedFileKey(key); setSelectedLineId(line.id); window.history.replaceState(null, "", `#${file.id}/${line.id}`); }} />;
+                        return <DiffFileCard key={key} file={file} references={referencesForFile(section, file)} forceOpen={expandedFileKey === key} diffMode={diffMode} reviewed={reviewedFileIds.has(file.id)} onReviewedChange={() => toggleReviewed(file.id)} selectedLineId={selectedLineId} registerRef={(element) => { fileRefs.current[key] = element; }} onCopy={() => void copyText(file.path, "File path copied")} onLineSelect={(line) => { setExpandedFileKey(key); setSelectedLineId(line.id); window.history.replaceState(null, "", `#${file.id}/${line.id}`); }} />;
                       })}
                       {!files.length ? <div className="lg-empty-diff">No resolvable files are attached to this section.</div> : null}
                     </div>

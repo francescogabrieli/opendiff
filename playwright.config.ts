@@ -8,7 +8,7 @@ export default defineConfig({
   reporter: process.env.CI ? "line" : "list",
   use: {
     ...devices["Desktop Chrome"],
-    channel: "chrome",
+    channel: process.env.CI ? undefined : "chrome",
     baseURL: "http://127.0.0.1:4173",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",

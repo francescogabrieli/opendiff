@@ -2,22 +2,170 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://opendiff.local/schema/review-1.0.json",
   "title": "OpenDiff review",
+  "description": "Agent-authored narrative and references for a local OpenDiff guided review.",
   "type": "object",
+  "additionalProperties": false,
   "required": ["schemaVersion", "project", "review", "git", "stats", "sections", "tests", "risks", "assumptions", "completion"],
   "properties": {
     "schemaVersion": { "const": "1.0" },
-    "project": { "type": "object", "required": ["name", "root"], "properties": { "name": { "type": "string" }, "root": { "type": "string" } } },
-    "review": { "type": "object", "required": ["id", "title", "summary", "originalTask", "generatedAt"], "properties": { "id": { "type": "string" }, "title": { "type": "string" }, "summary": { "type": "string" }, "originalTask": { "type": "string" }, "generatedAt": { "type": "string", "format": "date-time" } } },
-    "git": { "type": "object", "required": ["baseRef", "baseCommit", "targetRef", "includeStaged", "includeUnstaged", "includeUntracked"], "properties": { "baseRef": { "type": "string" }, "baseCommit": { "type": "string" }, "targetRef": { "type": "string" }, "branch": { "type": "string" }, "includeStaged": { "type": "boolean" }, "includeUnstaged": { "type": "boolean" }, "includeUntracked": { "type": "boolean" }, "fingerprint": { "type": "string" }, "initialWorkingTree": { "type": "object", "required": ["clean", "preExistingChanges"], "properties": { "clean": { "type": "boolean" }, "preExistingChanges": { "type": "array", "items": { "type": "string" } } } } } },
-    "stats": { "type": "object", "required": ["filesChanged", "additions", "deletions"], "properties": { "filesChanged": { "type": "integer", "minimum": 0 }, "filesAdded": { "type": "integer", "minimum": 0 }, "filesModified": { "type": "integer", "minimum": 0 }, "filesDeleted": { "type": "integer", "minimum": 0 }, "filesRenamed": { "type": "integer", "minimum": 0 }, "additions": { "type": "integer", "minimum": 0 }, "deletions": { "type": "integer", "minimum": 0 }, "sections": { "type": "integer", "minimum": 0 }, "testsChanged": { "type": "integer", "minimum": 0 } } },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "root"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "root": { "type": "string" }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "summary", "originalTask", "generatedAt"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 },
+        "originalTask": { "type": "string" },
+        "generatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseRef", "baseCommit", "targetRef", "includeStaged", "includeUnstaged", "includeUntracked"],
+      "properties": {
+        "baseRef": { "type": "string", "minLength": 1 },
+        "baseCommit": { "type": "string", "minLength": 1 },
+        "targetRef": { "type": "string", "minLength": 1 },
+        "branch": { "type": "string" },
+        "includeStaged": { "type": "boolean" },
+        "includeUnstaged": { "type": "boolean" },
+        "includeUntracked": { "type": "boolean" },
+        "fingerprint": { "type": "string" },
+        "initialWorkingTree": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["clean", "preExistingChanges"],
+          "properties": {
+            "clean": { "type": "boolean" },
+            "preExistingChanges": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filesChanged", "additions", "deletions"],
+      "properties": {
+        "filesChanged": { "type": "integer", "minimum": 0 },
+        "filesAdded": { "type": "integer", "minimum": 0 },
+        "filesModified": { "type": "integer", "minimum": 0 },
+        "filesDeleted": { "type": "integer", "minimum": 0 },
+        "filesRenamed": { "type": "integer", "minimum": 0 },
+        "additions": { "type": "integer", "minimum": 0 },
+        "deletions": { "type": "integer", "minimum": 0 },
+        "sections": { "type": "integer", "minimum": 0 },
+        "testsChanged": { "type": "integer", "minimum": 0 }
+      }
+    },
     "sections": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/section" } },
-    "tests": { "type": "object", "required": ["executed", "notExecuted"], "properties": { "executed": { "type": "array" }, "notExecuted": { "type": "array" } } },
-    "risks": { "type": "array" },
+    "tests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executed", "notExecuted"],
+      "properties": {
+        "executed": { "type": "array", "items": { "$ref": "#/$defs/executedTest" } },
+        "notExecuted": { "type": "array", "items": { "$ref": "#/$defs/notExecutedTest" } }
+      }
+    },
+    "risks": { "type": "array", "items": { "$ref": "#/$defs/risk" } },
     "assumptions": { "type": "array", "items": { "type": "string" } },
-    "completion": { "type": "object", "required": ["status", "summary", "remainingWork"], "properties": { "status": { "enum": ["complete", "partial", "blocked"] }, "summary": { "type": "string" }, "remainingWork": { "type": "array" } } }
+    "completion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "summary", "remainingWork"],
+      "properties": {
+        "status": { "enum": ["complete", "partial", "blocked"] },
+        "summary": { "type": "string" },
+        "remainingWork": { "type": "array", "items": { "type": "string" } }
+      }
+    }
   },
   "$defs": {
-    "reference": { "type": "object", "required": ["id", "file", "kind", "newLines", "oldLines", "description"], "properties": { "id": { "type": "string" }, "file": { "type": "string" }, "symbol": { "type": "string" }, "kind": { "enum": ["primary", "secondary", "test"] }, "newLines": { "type": "object", "required": ["start", "end"], "properties": { "start": { "type": "integer", "minimum": 1 }, "end": { "type": "integer", "minimum": 1 } } }, "oldLines": { "type": ["object", "null"] }, "description": { "type": "string" }, "resolved": { "type": "boolean" }, "resolutionError": { "type": "string" } } },
-    "section": { "type": "object", "required": ["id", "order", "title", "shortDescription", "purpose", "explanation", "impact", "references"], "properties": { "id": { "type": "string" }, "order": { "type": "integer", "minimum": 1 }, "title": { "type": "string" }, "shortDescription": { "type": "string", "maxLength": 120 }, "purpose": { "type": "string" }, "explanation": { "type": "array", "items": { "type": "string" } }, "impact": { "type": "array", "items": { "type": "string" } }, "references": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/reference" } } } }
+    "lineRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "integer", "minimum": 1 },
+        "end": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "file", "kind", "newLines", "oldLines", "description"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "file": { "type": "string", "minLength": 1 },
+        "symbol": { "type": "string" },
+        "kind": { "enum": ["primary", "secondary", "test"] },
+        "newLines": { "$ref": "#/$defs/lineRange" },
+        "oldLines": { "oneOf": [{ "$ref": "#/$defs/lineRange" }, { "type": "null" }] },
+        "description": { "type": "string", "minLength": 1 },
+        "resolved": { "type": "boolean" },
+        "resolutionError": { "type": "string" }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["severity", "title", "description"],
+      "properties": {
+        "severity": { "enum": ["low", "medium", "high"] },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "relatedReferences": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "executedTest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "status", "summary"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["passed", "failed", "skipped"] },
+        "summary": { "type": "string", "minLength": 1 },
+        "durationMs": { "type": "number", "minimum": 0 }
+      }
+    },
+    "notExecutedTest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "reason"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "order", "title", "shortDescription", "purpose", "explanation", "impact", "references"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "order": { "type": "integer", "minimum": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "shortDescription": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "purpose": { "type": "string", "minLength": 1 },
+        "explanation": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "impact": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "references": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/reference" } },
+        "relatedTests": { "type": "array", "items": { "type": "string" } },
+        "risks": { "type": "array", "items": { "$ref": "#/$defs/risk" } },
+        "notes": { "type": "array", "items": { "type": "string" } }
+      }
+    }
   }
 }

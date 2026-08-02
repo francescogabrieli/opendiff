@@ -87,6 +87,49 @@ test.describe("OpenDiff guided review", () => {
     await expect(page.getByRole("menuitemradio", { name: "8 lines" })).toHaveAttribute("aria-checked", "true");
   });
 
+  test("switches to a split diff and toggles line wrapping", async ({ page }) => {
+    // Given an expanded file in the guided review
+    await page.goto(demoUrl);
+    await page.getByTestId("reference-ref-refresh-coordinator").click();
+
+    // When the reviewer changes the display options
+    await page.getByRole("button", { name: "Diff display settings" }).click();
+    await page.getByRole("button", { name: "Split", exact: true }).click();
+    await page.getByRole("switch", { name: "Wrap lines" }).click();
+
+    // Then the file uses the split layout and wrapping is enabled
+    await expect(page.locator(".lg-split-code")).toBeVisible();
+    await expect(page.getByRole("switch", { name: "Wrap lines" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  test("persists reviewed files across reloads", async ({ page }) => {
+    // Given an expanded file that has not been reviewed
+    await page.goto(demoUrl);
+    await page.getByTestId("reference-ref-refresh-coordinator").click();
+    const file = page.getByTestId("diff-file-file-refresh-coordinator");
+
+    // When the reviewer marks it as reviewed and reloads
+    await file.getByRole("button", { name: "Reviewed" }).click();
+    await expect(file.getByRole("button", { name: "Reviewed" })).toHaveAttribute("aria-pressed", "true");
+    await page.reload();
+
+    // Then the reviewed state is restored
+    await expect(page.getByTestId("diff-file-file-refresh-coordinator").getByRole("button", { name: "Reviewed" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("keeps the guided review usable on a narrow viewport", async ({ page }) => {
+    // Given a phone-sized viewport
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(demoUrl);
+
+    // When display settings are opened
+    await page.getByRole("button", { name: "Diff display settings" }).click();
+
+    // Then content stays within the viewport and split mode is unavailable
+    await expect(page.getByRole("button", { name: "Split", exact: true })).toBeDisabled();
+    await expect.poll(() => page.locator(".lg-guide-scroll").evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  });
+
   test("restores a selected line deep link after reload", async ({ page }) => {
     await page.goto(demoUrl);
     await page.getByTestId("reference-ref-refresh-coordinator").click();

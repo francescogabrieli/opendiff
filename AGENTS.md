@@ -1,5 +1,20 @@
 # OpenDiff contributor notes
 
+## Core boundaries
+
+- OpenDiff is local-first and deterministic. Do not add telemetry, remote source uploads, or model calls to the renderer.
+- The implementing agent owns the narrative; Git owns the diff and calculated statistics.
+- The CLI resolves the target repository from the current working directory and bundled assets from the installed package.
+- Never stage, commit, reset, or delete a user's repository changes.
+- Keep `cli/schema.mjs`, `schemas/review.schema.json`, `src/types.ts`, examples, and the bundled skill aligned.
+
+## Validation
+
+- Fast checks: `npm test && npm run build`
+- Browser suite: `npm run test:e2e`
+- Publish contents: `npm run package:check`
+- Never touch generated `.agent-diffs/`, `public/data/`, `test-results/`, `playwright-report/`, or `dist/` artefacts.
+
 ## E2E Testing
 
 ### Layout
@@ -7,7 +22,7 @@
 - Specs: `tests/e2e/<feature>.spec.ts`
 - Page objects: none — the current suite is intentionally flat.
 - Shared fixtures: `examples/fixtures/manifest.json` and query-driven local fixtures.
-- Never touch: generated `test-results/`, `playwright-report/`, `dist/`, or `public/data/` artefacts.
+- Never touch generated test or renderer artefacts.
 
 ### Locator strategy
 
