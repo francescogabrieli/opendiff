@@ -6,7 +6,7 @@
 
 OpenDiff turns a coding agent's working-tree changes into a local, guided code review. The agent explains the work it just performed; OpenDiff validates those explanations against the real Git diff and renders an ordered review by intent instead of filename.
 
-![OpenDiff guided review](docs/opendiff-preview.png)
+![OpenDiff guided review showing Guide and Diff navigation](docs/opendiff-demo.gif)
 
 OpenDiff is local-first and deterministic. It does not upload source code, call an AI model, create a pull request, or modify the repository being reviewed.
 

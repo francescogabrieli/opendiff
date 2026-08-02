@@ -18,7 +18,7 @@ This checklist is for maintainers preparing a public OpenDiff release.
    npm run package:check
    ```
 
-5. Inspect the tarball listing. It must include `cli/`, `dist/`, `schemas/`, `skills/`, `README.md`, and `LICENSE`, and must exclude local review data and test artifacts.
+5. Inspect the tarball listing. It must include `cli/`, `dist/`, `schemas/`, `skills/`, documentation media, `README.md`, and `LICENSE`, and must exclude local review data and test artifacts.
 6. Install the packed tarball into a temporary directory and smoke-test `agent-diffs --help`, `skill install`, and a small review against a temporary Git repository.
 
 ## Publish
