@@ -14,13 +14,13 @@
     "git",
     "local-first"
   ],
-  "homepage": "https://github.com/francescogabrieli/OpenDiff#readme",
+  "homepage": "https://github.com/francescogabrieli/OpenDiffs#readme",
   "bugs": {
-    "url": "https://github.com/francescogabrieli/OpenDiff/issues"
+    "url": "https://github.com/francescogabrieli/OpenDiffs/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/francescogabrieli/OpenDiff.git"
+    "url": "git+https://github.com/francescogabrieli/OpenDiffs.git"
   },
   "engines": {
     "node": ">=20.19.0"
@@ -45,8 +45,7 @@
     "access": "public"
   },
   "bin": {
-    "opendiffs": "./cli/opendiffs.mjs",
-    "agent-diffs": "./cli/index.mjs"
+    "opendiffs": "./cli/opendiffs.mjs"
   },
   "scripts": {
     "dev": "vite",
@@ -59,7 +58,6 @@
     "check": "npm test && npm run build",
     "package:check": "npm pack --dry-run",
     "prepack": "npm run check",
-    "agent-diffs": "node ./cli/index.mjs",
     "opendiffs": "node ./cli/opendiffs.mjs"
   },
   "dependencies": {

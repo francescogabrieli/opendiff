@@ -5,7 +5,7 @@ labels: [bug]
 body:
   - type: markdown
     attributes:
-      value: Thanks for helping improve OpenDiff. Remove proprietary code and secrets before submitting.
+      value: Thanks for helping improve OpenDiffs. Remove proprietary code and secrets before submitting.
   - type: textarea
     id: description
     attributes:
@@ -27,7 +27,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: OpenDiff version or commit
+      label: OpenDiffs version or commit
       placeholder: 0.1.0 or commit SHA
     validations:
       required: true

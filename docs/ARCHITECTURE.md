@@ -1,10 +1,10 @@
 # Architecture
 
-This document describes OpenDiff's current system boundaries and the constraints contributors should preserve.
+This document describes OpenDiffs's current system boundaries and the constraints contributors should preserve.
 
 ## Design goals
 
-OpenDiff is:
+OpenDiffs is:
 
 - **local-first**: repository content stays on the developer's machine;
 - **deterministic**: the renderer presents supplied facts and never calls a model;
@@ -16,11 +16,11 @@ OpenDiff is:
 ## Runtime flow
 
 ```text
-target repository                         installed OpenDiff package
+target repository                         installed OpenDiffs package
 ┌──────────────────────────────┐          ┌────────────────────────────┐
 │ .git/                        │          │ cli/                       │
-│ .agent-diffs/review.json     │─────────▶│ validation + Git adapter   │
-│ .agent-diffs/config.json     │          │ local HTTP server          │
+│ .opendiffs/review.json     │─────────▶│ validation + Git adapter   │
+│ .opendiffs/config.json     │          │ local HTTP server          │
 └──────────────────────────────┘          ├────────────────────────────┤
                                           │ dist/                      │
                                           │ bundled React renderer     │
@@ -54,9 +54,9 @@ Owns initialization, skill installation, validation, materialization, export, br
 
 Serves the bundled static renderer and three dynamic endpoints:
 
-- `/__opendiff/data/review` returns the agent-authored review;
-- `/__opendiff/data/diff` returns the current parsed Git diff;
-- `/__opendiff/status` compares the rendered and current fingerprints.
+- `/__opendiffs/data/review` returns the agent-authored review;
+- `/__opendiffs/data/diff` returns the current parsed Git diff;
+- `/__opendiffs/status` compares the rendered and current fingerprints.
 
 The HTTP server binds to loopback only. Static file resolution must stay within the bundled `dist/` directory.
 
@@ -78,7 +78,7 @@ The renderer may enrich or normalize data for display, but must not overwrite th
 
 ## Generated data
 
-`.agent-diffs/`, `public/data/`, `dist/`, Playwright reports, and test results are generated and ignored. `render` materializes local data for inspection; `export` copies the bundled production renderer and current review data into a standalone folder.
+`.opendiffs/`, `public/data/`, `dist/`, Playwright reports, and test results are generated and ignored. `render` materializes local data for inspection; `export` copies the bundled production renderer and current review data into a standalone folder.
 
 ## Extension rules
 

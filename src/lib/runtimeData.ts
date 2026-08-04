@@ -159,7 +159,7 @@ async function fetchJson<T>(url: string, kind: ReviewLoadErrorKind): Promise<T> 
   try {
     response = await fetch(url, { cache: "no-store" });
   } catch (error) {
-    throw new ReviewLoadError("unavailable", "The local OpenDiff renderer is unavailable.", error instanceof Error ? error.message : String(error));
+    throw new ReviewLoadError("unavailable", "The local OpenDiffs renderer is unavailable.", error instanceof Error ? error.message : String(error));
   }
   if (!response.ok) {
     let message = response.statusText || `HTTP ${response.status}`;
@@ -175,12 +175,12 @@ async function fetchJson<T>(url: string, kind: ReviewLoadErrorKind): Promise<T> 
   }
   const body = await response.text();
   if (body.trimStart().startsWith("<")) {
-    throw new ReviewLoadError(kind, kind === "missing-review" ? "No OpenDiff review was found." : "The requested OpenDiff data is unavailable.", "spa-fallback");
+    throw new ReviewLoadError(kind, kind === "missing-review" ? "No OpenDiffs review was found." : "The requested OpenDiffs data is unavailable.", "spa-fallback");
   }
   try {
     return JSON.parse(body) as T;
   } catch (error) {
-    throw new ReviewLoadError("invalid-json", `OpenDiff received invalid JSON from ${url}.`, error instanceof Error ? error.message : String(error));
+    throw new ReviewLoadError("invalid-json", `OpenDiffs received invalid JSON from ${url}.`, error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -239,13 +239,13 @@ function demoBundle(fixture?: string | null): ReviewBundle {
 }
 
 async function fetchRenderedDocuments(contextLines: number): Promise<{ review: ReviewData; diff: DiffDocument; status: ReviewStatusDocument }> {
-  const endpointReview = "/__opendiff/data/review";
-  const endpointDiff = `/__opendiff/data/diff?context=${encodeURIComponent(contextLines)}`;
+  const endpointReview = "/__opendiffs/data/review";
+  const endpointDiff = `/__opendiffs/data/diff?context=${encodeURIComponent(contextLines)}`;
   try {
     const review = await fetchJson<ReviewData>(endpointReview, "missing-review");
     const diff = await fetchJson<DiffDocument>(endpointDiff, "missing-base");
     let status: ReviewStatusDocument = {};
-    try { status = await fetchJson<ReviewStatusDocument>("/__opendiff/status", "unavailable"); } catch { /* status is optional */ }
+    try { status = await fetchJson<ReviewStatusDocument>("/__opendiffs/status", "unavailable"); } catch { /* status is optional */ }
     return { review, diff, status };
   } catch (endpointError) {
     if (endpointError instanceof ReviewLoadError && endpointError.detail === "missing-review") throw endpointError;
@@ -260,14 +260,14 @@ async function fetchRenderedDocuments(contextLines: number): Promise<{ review: R
     } catch (staticError) {
       if (staticError instanceof ReviewLoadError) throw staticError;
       if (endpointError instanceof ReviewLoadError) throw endpointError;
-      throw new ReviewLoadError("missing-review", "No OpenDiff review was found. Ask the coding agent to generate .agent-diffs/review.json.");
+      throw new ReviewLoadError("missing-review", "No OpenDiffs review was found. Ask the coding agent to generate .opendiffs/review.json.");
     }
   }
 }
 
 export async function loadDiffDocument(contextLines = 5): Promise<DiffDocument> {
   try {
-    return await fetchJson<DiffDocument>(`/__opendiff/data/diff?context=${encodeURIComponent(contextLines)}`, "missing-base");
+    return await fetchJson<DiffDocument>(`/__opendiffs/data/diff?context=${encodeURIComponent(contextLines)}`, "missing-base");
   } catch {
     return fetchJson<DiffDocument>("/data/diff.json", "missing-base");
   }
@@ -275,7 +275,7 @@ export async function loadDiffDocument(contextLines = 5): Promise<DiffDocument> 
 
 export async function loadReviewStatus(): Promise<ReviewStatusDocument> {
   try {
-    return await fetchJson<ReviewStatusDocument>("/__opendiff/status", "unavailable");
+    return await fetchJson<ReviewStatusDocument>("/__opendiffs/status", "unavailable");
   } catch {
     return fetchJson<ReviewStatusDocument>("/data/status.json", "unavailable");
   }
@@ -284,13 +284,13 @@ export async function loadReviewStatus(): Promise<ReviewStatusDocument> {
 export async function loadReviewBundle(options: LoadOptions = {}): Promise<ReviewBundle> {
   const fixture = options.fixture ?? new URLSearchParams(window.location.search).get("fixture");
   if (options.demo || fixture === "demo" || fixture === "small" || fixture === "medium" || fixture === "rename" || fixture === "deleted" || fixture === "lockfile" || fixture === "large" || fixture === "invalid" || fixture === "stale" || fixture === "empty" || fixture === "missing") {
-    if (fixture === "missing") throw new ReviewLoadError("missing-review", "No OpenDiff review was found. Ask the coding agent to generate .agent-diffs/review.json.");
+    if (fixture === "missing") throw new ReviewLoadError("missing-review", "No OpenDiffs review was found. Ask the coding agent to generate .opendiffs/review.json.");
     return demoBundle(fixture);
   }
   const contextLines = options.contextLines ?? 5;
   const { review, diff: diffDocument, status } = await fetchRenderedDocuments(contextLines);
   if (!review?.review?.id || !Array.isArray(diffDocument?.files)) {
-    throw new ReviewLoadError("invalid-json", "The rendered OpenDiff data is incomplete.");
+    throw new ReviewLoadError("invalid-json", "The rendered OpenDiffs data is incomplete.");
   }
   const enriched = enrichDiff(review, diffDocument.files);
   const warnings = [...enriched.validation.warnings];
