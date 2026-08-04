@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 const demoUrl = "/?demo=1";
 
-test.describe("OpenDiff guided review", () => {
+test.describe("OpenDiffs guided review", () => {
   test("opens the Linear-style guided review", async ({ page }) => {
     await page.goto(demoUrl);
 

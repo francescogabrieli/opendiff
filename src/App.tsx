@@ -680,7 +680,7 @@ function ExplanationPanel({
       ) : (
         <>
           <h2 className="explanation-title">A review organized by intent</h2>
-          <p className="explanation-lead">OpenDiff keeps the code in the center and puts the agent’s reasoning one click away from the lines it describes.</p>
+          <p className="explanation-lead">OpenDiffs keeps the code in the center and puts the agent’s reasoning one click away from the lines it describes.</p>
           <div className="overview-panel-block">
             <span className="panel-label">How to read it</span>
             <div className="read-instruction"><span className="instruction-number">01</span><span>Start with the reading path on the left.</span></div>
@@ -1003,12 +1003,12 @@ function ReviewWorkspace({ bundle }: { bundle: ReviewBundle }) {
         <div className="topbar-brand">
           <button type="button" className="mobile-panel-button" aria-label="Open review navigation" onClick={() => setUiPartial({ navigationOpen: !ui.navigationOpen })}><Menu size={16} /></button>
           <span className="brand-mark" aria-hidden="true"><span /></span>
-          <span className="brand-name">OpenDiff</span>
+          <span className="brand-name">OpenDiffs</span>
           <span className="brand-version">local</span>
           {bundle.source === "demo" ? <span className="demo-badge">demo data</span> : null}
         </div>
         <div className="topbar-context" aria-label="Repository context">
-          <span>agent-diffs</span><span className="context-slash">/</span><span>{review.git.branch}</span>
+          <span>opendiffs</span><span className="context-slash">/</span><span>{review.git.branch}</span>
           <span className="context-base"><GitCommitHorizontal size={12} /> {review.git.baseCommit}</span>
         </div>
         <div className="topbar-actions">
@@ -1121,20 +1121,20 @@ function expandedFile(ui: ReviewUiState, fileId: string): boolean {
 
 function loadErrorCopy(error: unknown): { title: string; body: string; detail?: string } {
   if (error instanceof ReviewLoadError) {
-    if (error.kind === "missing-review") return { title: "No OpenDiff review was found", body: "Ask the coding agent to generate .agent-diffs/review.json, then reload this page." };
+    if (error.kind === "missing-review") return { title: "No OpenDiffs review was found", body: "Ask the coding agent to generate .opendiffs/review.json, then reload this page." };
     if (error.kind === "missing-base") return { title: "The review base is unavailable", body: "The recorded Git base no longer exists. Regenerate the review using an existing Git reference." };
     if (error.kind === "empty-diff") return { title: "No code changes were found", body: "There are no changes between the selected base and the current working tree." };
-    if (error.kind === "invalid-json") return { title: "The review data is invalid", body: "OpenDiff could not read the generated review data. Validate review.json and render it again.", detail: error.detail };
-    return { title: "The local renderer is unavailable", body: "Start OpenDiff from the repository with agent-diffs review, then try again.", detail: error.detail };
+    if (error.kind === "invalid-json") return { title: "The review data is invalid", body: "OpenDiffs could not read the generated review data. Validate review.json and render it again.", detail: error.detail };
+    return { title: "The local renderer is unavailable", body: "Start OpenDiffs from the repository with opendiffs review, then try again.", detail: error.detail };
   }
-  return { title: "OpenDiff could not open this review", body: error instanceof Error ? error.message : "An unknown local error occurred." };
+  return { title: "OpenDiffs could not open this review", body: error instanceof Error ? error.message : "An unknown local error occurred." };
 }
 
 function LoadingScreen() {
   return (
     <main className="load-state" role="status" aria-live="polite">
       <div className="load-state-mark"><span /></div>
-      <span className="load-state-kicker">OpenDiff · local review</span>
+      <span className="load-state-kicker">OpenDiffs · local review</span>
       <h1>Loading guided review</h1>
       <p>Reading the review narrative and the current Git diff.</p>
       <span className="load-spinner" aria-hidden="true" />
@@ -1147,13 +1147,13 @@ function ErrorScreen({ error, onRetry }: { error: unknown; onRetry: () => void }
   return (
     <main className="load-state load-error" role="alert" data-testid="load-error">
       <div className="load-state-mark load-state-mark-error"><AlertTriangle size={17} /></div>
-      <span className="load-state-kicker">OpenDiff · local review</span>
+      <span className="load-state-kicker">OpenDiffs · local review</span>
       <h1>{copy.title}</h1>
       <p>{copy.body}</p>
       {copy.detail ? <code>{copy.detail}</code> : null}
       <div className="load-state-actions">
         <button type="button" className="primary-action" onClick={onRetry}>Try again</button>
-        <span>Generate data with <code>agent-diffs render</code></span>
+        <span>Generate data with <code>opendiffs render</code></span>
       </div>
     </main>
   );

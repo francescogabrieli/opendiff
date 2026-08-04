@@ -67,9 +67,9 @@ Organize the review by implementation intent, not alphabetically. Prefer two to 
 
 A file may appear in more than one section when separate hunks serve different purposes.
 
-## 4. Write `.agent-diffs/review.json`
+## 4. Write `.opendiffs/review.json`
 
-Create `.agent-diffs/` when necessary and write strict JSON matching schema version `1.0`:
+Create `.opendiffs/` when necessary and write strict JSON matching schema version `1.0`:
 
 ```json
 {

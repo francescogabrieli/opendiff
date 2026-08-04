@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://opendiff.local/schema/review-1.0.json",
-  "title": "OpenDiff review",
-  "description": "Agent-authored narrative and references for a local OpenDiff guided review.",
+  "$id": "https://opendiffs.local/schema/review-1.0.json",
+  "title": "OpenDiffs review",
+  "description": "Agent-authored narrative and references for a local OpenDiffs guided review.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "project", "review", "git", "stats", "sections", "tests", "risks", "assumptions", "completion"],

@@ -17,7 +17,7 @@ export function loadUiState(reviewId: string, fileIds: string[], defaultExpanded
   fallback.expandedFiles = { ...fallback.expandedFiles, ...defaultExpandedFiles };
   if (typeof window === "undefined") return fallback;
   try {
-    const saved = window.localStorage.getItem(`opendiff:ui:${reviewId}`);
+    const saved = window.localStorage.getItem(`opendiffs:ui:${reviewId}`);
     if (!saved) return fallback;
     const parsed = JSON.parse(saved) as Partial<ReviewUiState>;
     return {
@@ -34,7 +34,7 @@ export function loadUiState(reviewId: string, fileIds: string[], defaultExpanded
 export function saveUiState(reviewId: string, state: ReviewUiState): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(`opendiff:ui:${reviewId}`, JSON.stringify(state));
+    window.localStorage.setItem(`opendiffs:ui:${reviewId}`, JSON.stringify(state));
   } catch {
     // Local storage can be disabled; the review remains usable in memory.
   }

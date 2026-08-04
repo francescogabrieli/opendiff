@@ -1,12 +1,12 @@
 # OpenDiffs
 
-[![CI](https://github.com/francescogabrieli/OpenDiff/actions/workflows/ci.yml/badge.svg)](https://github.com/francescogabrieli/OpenDiff/actions/workflows/ci.yml)
+[![CI](https://github.com/francescogabrieli/OpenDiffs/actions/workflows/ci.yml/badge.svg)](https://github.com/francescogabrieli/OpenDiffs/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node.js 20.19+](https://img.shields.io/badge/node-%3E%3D20.19-339933.svg)](package.json)
 
 OpenDiffs turns a coding agent's working-tree changes into a local, guided code review. The same agent that implements the work explains it; OpenDiffs validates those explanations against the real Git diff and presents the review by intent instead of filename.
 
-![OpenDiffs guided review](docs/opendiff-demo.gif)
+![OpenDiffs guided review](docs/opendiffs-demo.gif)
 
 OpenDiffs is local-first and deterministic. It does not upload source code, call an additional model, create a pull request, or modify the repository being reviewed.
 
@@ -59,7 +59,7 @@ coding agent captures the Git baseline
    │
    ├── implements and verifies the requested change
    ├── reads the complete final diff
-   └── writes .agent-diffs/review.json
+   └── writes .opendiffs/review.json
    │
    ▼
 npx opendiffs review
@@ -102,7 +102,6 @@ The skill normally invokes these automatically. They are documented for developm
 
 Common runtime options are `--base REF`, `--context N`, `--port PORT`, `--no-open`, and `--force`.
 
-The legacy `agent-diffs` command remains available during the pre-1.0 transition.
 
 ## The npm package contains the full app
 
@@ -120,7 +119,7 @@ The `prepack` script runs tests and creates the production renderer before npm a
 
 ## Review format
 
-The agent-owned `.agent-diffs/review.json` contains metadata, ordered sections, explanations, impacts, precise code references, verification results, risks, assumptions, and completion state. OpenDiffs separately derives the diff contents and statistics from Git.
+The agent-owned `.opendiffs/review.json` contains metadata, ordered sections, explanations, impacts, precise code references, verification results, risks, assumptions, and completion state. OpenDiffs separately derives the diff contents and statistics from Git.
 
 ```json
 {
@@ -146,8 +145,8 @@ Requirements:
 - Chrome or Chromium for end-to-end tests.
 
 ```bash
-git clone https://github.com/francescogabrieli/OpenDiff.git
-cd OpenDiff
+git clone https://github.com/francescogabrieli/OpenDiffs.git
+cd OpenDiffs
 npm ci
 npm run dev
 npm test

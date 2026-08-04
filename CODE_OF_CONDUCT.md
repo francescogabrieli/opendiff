@@ -1,6 +1,6 @@
 # Code of Conduct
 
-OpenDiff is committed to a respectful, constructive, and harassment-free community.
+OpenDiffs is committed to a respectful, constructive, and harassment-free community.
 
 ## Expected behavior
 
@@ -20,4 +20,4 @@ Report conduct concerns privately to the repository owner through the contact me
 
 Maintainers may edit or remove content, issue a warning, temporarily restrict participation, or permanently ban a participant when behavior harms the community. Decisions will consider context, severity, repetition, and the safety of affected people.
 
-This policy applies to repositories, issues, pull requests, discussions, and other spaces managed by OpenDiff.
+This policy applies to repositories, issues, pull requests, discussions, and other spaces managed by OpenDiffs.

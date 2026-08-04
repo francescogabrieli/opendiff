@@ -51,9 +51,7 @@ Installer options:
   --help        Show this help
 
 The review, validate, render, open, and export commands are forwarded to the
-OpenDiffs runtime. The legacy agent-diffs binary remains available during the
-pre-1.0 transition.
-`);
+OpenDiffs runtime. `);
 }
 
 function parseInstallerOptions(argv) {

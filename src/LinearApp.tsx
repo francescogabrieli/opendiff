@@ -843,7 +843,7 @@ function ReviewGuide({
               <h1>[{issueKey}] {review.review.title}</h1>
               <div className="lg-guide-meta">
                 <span className="lg-meta-logo"><span /></span>
-                <span>OpenDiff</span><span>·</span><span>{review.project.name}</span><span>·</span>
+                <span>OpenDiffs</span><span>·</span><span>{review.project.name}</span><span>·</span>
                 <GitBranch size={12} /><span>{review.git.branch}</span><span>←</span>
                 <GitCommitHorizontal size={12} /><span>{review.git.baseCommit}</span>
               </div>
@@ -913,7 +913,7 @@ function loadErrorCopy(error: unknown): { title: string; body: string; detail?: 
     if (error.kind === "missing-review") {
       return {
         title: "No OpenDiffs review was found",
-        body: "Ask the coding agent to generate .agent-diffs/review.json, then reload.",
+        body: "Ask the coding agent to generate .opendiffs/review.json, then reload.",
       };
     }
     if (error.kind === "missing-base") {

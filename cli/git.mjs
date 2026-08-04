@@ -56,7 +56,7 @@ export function getWorkingTree(root) {
 }
 
 export function loadConfig(root) {
-  const configPath = join(root, ".agent-diffs", "config.json");
+  const configPath = join(root, ".opendiffs", "config.json");
   if (!existsSync(configPath)) return { ...defaultConfig };
   try {
     return { ...defaultConfig, ...JSON.parse(readFileSync(configPath, "utf8")) };
@@ -117,7 +117,7 @@ export function collectDiff({ root, base = "HEAD", context = 5, includeStaged = 
   if (includeUntracked) {
     const untracked = runGit(root, ["ls-files", "--others", "--exclude-standard"], { allowFailure: true, silent: true })
       .split("\n").map((path) => path.trim()).filter(Boolean)
-      .filter((path) => !path.startsWith(".agent-diffs/") && !path.startsWith("node_modules/") && !matchesAnyPath(path, ignoredPaths));
+      .filter((path) => !path.startsWith(".opendiffs/") && !path.startsWith("node_modules/") && !matchesAnyPath(path, ignoredPaths));
     for (const path of untracked) diffText += `\n${addUntrackedFileDiff(root, path, context)}`;
   }
 
