@@ -1,11 +1,13 @@
 {
-  "name": "opendiff",
+  "name": "opendiffs",
   "version": "0.1.0",
   "type": "module",
   "description": "Local, guided code reviews for changes made by coding agents.",
   "license": "MIT",
   "keywords": [
     "ai-agents",
+    "codex",
+    "claude-code",
     "code-review",
     "developer-tools",
     "diff",
@@ -28,6 +30,8 @@
     "CHANGELOG.md",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
+    "LICENSE",
+    "README.md",
     "SECURITY.md",
     "SUPPORT.md",
     "cli/",
@@ -38,10 +42,10 @@
     "skills/"
   ],
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "bin": {
+    "opendiffs": "./cli/opendiffs.mjs",
     "agent-diffs": "./cli/index.mjs"
   },
   "scripts": {
@@ -55,7 +59,8 @@
     "check": "npm test && npm run build",
     "package:check": "npm pack --dry-run",
     "prepack": "npm run check",
-    "agent-diffs": "node ./cli/index.mjs"
+    "agent-diffs": "node ./cli/index.mjs",
+    "opendiffs": "node ./cli/opendiffs.mjs"
   },
   "dependencies": {
     "zod": "^4.4.3"
