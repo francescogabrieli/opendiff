@@ -1,0 +1,116 @@
+name: Verify OpenDiffs naming
+
+on:
+  push:
+    branches:
+      - release/consistent-opendiffs-naming
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out migration branch
+        uses: actions/checkout@v7
+        with:
+          ref: release/consistent-opendiffs-naming
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Reject remaining legacy names
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import json
+          import re
+
+          root = Path('.')
+          ignored = {
+              Path('.github/workflows/verify-opendiffs-naming.yml'),
+          }
+          patterns = {
+              'OpenDiff without plural s': re.compile(r'OpenDiff(?!s)'),
+              'opendiff without plural s': re.compile(r'opendiff(?!s)'),
+              'legacy agent-diffs name': re.compile(r'agent-diffs'),
+              'legacy .agent-diffs directory': re.compile(r'\.agent-diffs'),
+          }
+          failures = []
+
+          for path in root.rglob('*'):
+              if not path.is_file() or '.git' in path.parts or 'node_modules' in path.parts:
+                  continue
+              relative = path.relative_to(root)
+              if relative in ignored:
+                  continue
+              try:
+                  text = path.read_text(encoding='utf-8')
+              except UnicodeDecodeError:
+                  continue
+              for label, pattern in patterns.items():
+                  for match in pattern.finditer(text):
+                      line = text.count('\n', 0, match.start()) + 1
+                      failures.append(f'{relative}:{line}: {label}: {match.group(0)}')
+
+          for path in root.rglob('*'):
+              if '.git' in path.parts:
+                  continue
+              relative = str(path.relative_to(root))
+              if re.search(r'agent-diffs|\.agent-diffs|OpenDiff(?!s)|opendiff(?!s)', relative):
+                  failures.append(f'legacy path: {relative}')
+
+          package = json.loads((root / 'package.json').read_text(encoding='utf-8'))
+          if package.get('name') != 'opendiffs':
+              failures.append('package.json name is not opendiffs')
+          if package.get('bin') != {'opendiffs': './cli/opendiffs.mjs'}:
+              failures.append(f"unexpected package.json bin: {package.get('bin')!r}")
+          if 'agent-diffs' in package.get('scripts', {}):
+              failures.append('legacy agent-diffs npm script remains')
+
+          lock = json.loads((root / 'package-lock.json').read_text(encoding='utf-8'))
+          root_package = lock.get('packages', {}).get('', {})
+          if lock.get('name') != 'opendiffs' or root_package.get('name') != 'opendiffs':
+              failures.append('package-lock root name is not opendiffs')
+          if root_package.get('bin') != {'opendiffs': 'cli/opendiffs.mjs'}:
+              failures.append(f"unexpected package-lock bin: {root_package.get('bin')!r}")
+
+          if not (root / 'skills' / 'opendiffs' / 'SKILL.md').is_file():
+              failures.append('skills/opendiffs/SKILL.md is missing')
+          if (root / 'skills' / 'agent-diffs').exists():
+              failures.append('skills/agent-diffs still exists')
+
+          if failures:
+              print('\n'.join(failures))
+              raise SystemExit(1)
+          print('No legacy naming remains in active repository files or paths.')
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run checks
+        run: npm test
+
+      - name: Build renderer
+        run: npm run build
+
+      - name: Inspect package contents
+        run: npm run package:check
+
+      - name: Remove one-time verifier
+        shell: bash
+        run: |
+          git rm .github/workflows/verify-opendiffs-naming.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: complete OpenDiffs naming verification"
+          git push origin HEAD:release/consistent-opendiffs-naming
