@@ -1,0 +1,128 @@
+name: GitHub Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: github-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release package version
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Resolve package version
+        id: version
+        shell: bash
+        run: |
+          VERSION="$(node --print "require('./package.json').version")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check for an existing release
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        if: steps.existing.outputs.exists != 'true'
+        run: npm ci
+
+      - name: Run checks
+        if: steps.existing.outputs.exists != 'true'
+        run: npm run check
+
+      - name: Build and inspect the real tarball
+        if: steps.existing.outputs.exists != 'true'
+        id: package
+        shell: bash
+        run: |
+          npm pack --json > npm-pack.json
+          TARBALL="$(node --input-type=module -e "import fs from 'node:fs'; const result = JSON.parse(fs.readFileSync('npm-pack.json', 'utf8')); process.stdout.write(result[0].filename);")"
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+          npm exec --yes --package "./$TARBALL" -- opendiffs --help
+
+      - name: Test installation from the tarball
+        if: steps.existing.outputs.exists != 'true'
+        env:
+          TARBALL: ${{ steps.package.outputs.tarball }}
+        shell: bash
+        run: |
+          TEST_HOME="$(mktemp -d)"
+          CODEX_HOME="$TEST_HOME/codex" \
+          CLAUDE_CONFIG_DIR="$TEST_HOME/claude" \
+          npm exec --yes --package "./$TARBALL" -- opendiffs install --agent all
+          test -f "$TEST_HOME/codex/skills/opendiffs/SKILL.md"
+          test -f "$TEST_HOME/claude/skills/opendiffs/SKILL.md"
+          rm -rf "$TEST_HOME"
+
+      - name: Extract release notes from the changelog
+        if: steps.existing.outputs.exists != 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+
+          const version = process.env.VERSION;
+          const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+          const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const match = changelog.match(new RegExp(`^## \\[${escaped}\\].*$([\\s\\S]*?)(?=^## |\\Z)`, 'm'));
+
+          if (!match) {
+            throw new Error(`CHANGELOG.md has no section for ${version}`);
+          }
+
+          const notes = match[1].trim();
+          if (!notes) {
+            throw new Error(`CHANGELOG.md section for ${version} is empty`);
+          }
+
+          fs.writeFileSync('release-notes.md', `${notes}\n`);
+          NODE
+
+      - name: Normalize repository homepage
+        if: steps.existing.outputs.exists != 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method PATCH "repos/$GITHUB_REPOSITORY" -f "homepage=https://github.com/$GITHUB_REPOSITORY#readme"
+
+      - name: Create GitHub release
+        if: steps.existing.outputs.exists != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          TARBALL: ${{ steps.package.outputs.tarball }}
+        shell: bash
+        run: |
+          gh release create "$TAG" "$TARBALL" \
+            --target "$GITHUB_SHA" \
+            --title "OpenDiffs $TAG" \
+            --notes-file release-notes.md
