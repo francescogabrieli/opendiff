@@ -64,8 +64,33 @@ jobs:
         id: package
         shell: bash
         run: |
-          npm pack --json > npm-pack.json
-          TARBALL="$(node --input-type=module -e "import fs from 'node:fs'; const result = JSON.parse(fs.readFileSync('npm-pack.json', 'utf8')); process.stdout.write(result[0].filename);")"
+          npm pack --json > npm-pack.log
+          TARBALL="$(node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+
+          const output = fs.readFileSync('npm-pack.log', 'utf8');
+          let result = null;
+
+          for (let index = output.indexOf('['); index !== -1; index = output.indexOf('[', index + 1)) {
+            try {
+              const candidate = JSON.parse(output.slice(index));
+              if (Array.isArray(candidate) && candidate[0]?.filename) {
+                result = candidate;
+                break;
+              }
+            } catch {
+              // Prepack logs can precede npm's final JSON payload.
+            }
+          }
+
+          if (!result) {
+            throw new Error('Could not locate npm pack JSON output');
+          }
+
+          process.stdout.write(result[0].filename);
+          NODE
+          )"
+          test -f "$TARBALL"
           echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
           npm exec --yes --package "./$TARBALL" -- opendiffs --help
 
@@ -95,13 +120,17 @@ jobs:
           const version = process.env.VERSION;
           const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
           const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const match = changelog.match(new RegExp(`^## \\[${escaped}\\].*$([\\s\\S]*?)(?=^## |\\Z)`, 'm'));
+          const header = new RegExp(`^## \\[${escaped}\\].*$`, 'm');
+          const match = header.exec(changelog);
 
           if (!match) {
             throw new Error(`CHANGELOG.md has no section for ${version}`);
           }
 
-          const notes = match[1].trim();
+          const remainder = changelog.slice(match.index + match[0].length);
+          const nextHeader = remainder.search(/^## /m);
+          const notes = (nextHeader === -1 ? remainder : remainder.slice(0, nextHeader)).trim();
+
           if (!notes) {
             throw new Error(`CHANGELOG.md section for ${version} is empty`);
           }
