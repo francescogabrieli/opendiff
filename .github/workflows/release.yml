@@ -2,9 +2,7 @@ name: GitHub Release
 
 on:
   push:
-    branches:
-      - main
-      - release/finalize-v0.1.0
+    branches: [main]
 
 permissions:
   contents: write
@@ -138,15 +136,8 @@ jobs:
           fs.writeFileSync('release-notes.md', `${notes}\n`);
           NODE
 
-      - name: Normalize repository homepage
-        if: github.ref == 'refs/heads/main' && steps.existing.outputs.exists != 'true'
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh api --method PATCH "repos/$GITHUB_REPOSITORY" -f "homepage=https://github.com/$GITHUB_REPOSITORY#readme"
-
       - name: Create GitHub release
-        if: github.ref == 'refs/heads/main' && steps.existing.outputs.exists != 'true'
+        if: steps.existing.outputs.exists != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
