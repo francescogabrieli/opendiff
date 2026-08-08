@@ -30,9 +30,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          mkdir -p .opendiffs
-          git mv .agent-diffs/config.json .opendiffs/config.json
-          rmdir .agent-diffs
+          if [ -e .agent-diffs ]; then
+            mkdir -p .opendiffs
+            if [ -f .agent-diffs/config.json ] && [ ! -f .opendiffs/config.json ]; then
+              git mv .agent-diffs/config.json .opendiffs/config.json
+            fi
+            rm -rf .agent-diffs
+          fi
+          test -f .opendiffs/config.json
 
           npm version 0.1.1 --no-git-tag-version
 
@@ -47,11 +52,14 @@ jobs:
           fs.writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
 
           const changelogPath = 'CHANGELOG.md';
-          const changelog = fs.readFileSync(changelogPath, 'utf8');
-          const marker = '## [0.1.0] - 2026-08-05';
-          if (!changelog.includes(marker)) throw new Error('Expected 0.1.0 changelog marker not found');
-          const release = `## [0.1.1] - 2026-08-08\n\n### Added\n\n- Added a repository-level default \`.opendiffs/config.json\` aligned with the runtime configuration path.\n\n### Changed\n\n- Expanded the README with clearer installation, usage, release, and development guidance.\n- Cleaned up the GitHub release workflow so an existing version is not recreated on later pushes.\n- Normalized npm package repository metadata to the canonical lowercase GitHub URL.\n\n`;
-          fs.writeFileSync(changelogPath, changelog.replace(marker, `${release}${marker}`));
+          let changelog = fs.readFileSync(changelogPath, 'utf8');
+          if (!changelog.includes('## [0.1.1] - 2026-08-08')) {
+            const marker = '## [0.1.0] - 2026-08-05';
+            if (!changelog.includes(marker)) throw new Error('Expected 0.1.0 changelog marker not found');
+            const release = `## [0.1.1] - 2026-08-08\n\n### Added\n\n- Added a repository-level default \`.opendiffs/config.json\` aligned with the runtime configuration path.\n\n### Changed\n\n- Expanded the README with clearer installation, usage, release, and development guidance.\n- Cleaned up the GitHub release workflow so an existing version is not recreated on later pushes.\n- Normalized npm package repository metadata to the canonical lowercase GitHub URL.\n\n`;
+            changelog = changelog.replace(marker, `${release}${marker}`);
+            fs.writeFileSync(changelogPath, changelog);
+          }
 
           const npmReleasePath = 'docs/NPM_RELEASE.md';
           const npmRelease = fs.readFileSync(npmReleasePath, 'utf8').replaceAll('0.1.0', '0.1.1');
@@ -101,7 +109,8 @@ jobs:
           rm .github/workflows/finalize-private-prepublish.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A -f .opendiffs/config.json
+          git add -A
+          git add -f .opendiffs/config.json
           git status --short
-          git commit -m 'Prepare OpenDiffs 0.1.1 for first npm publish'
+          git commit -m 'Finalize OpenDiffs 0.1.1 prepublish state'
           git push origin HEAD:release/finalize-private-prepublish
