@@ -1,6 +1,6 @@
 {
   "name": "opendiffs",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Local, guided code reviews for changes made by coding agents.",
   "license": "MIT",
@@ -14,13 +14,13 @@
     "git",
     "local-first"
   ],
-  "homepage": "https://github.com/francescogabrieli/OpenDiffs#readme",
+  "homepage": "https://github.com/francescogabrieli/opendiffs#readme",
   "bugs": {
-    "url": "https://github.com/francescogabrieli/OpenDiffs/issues"
+    "url": "https://github.com/francescogabrieli/opendiffs/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/francescogabrieli/OpenDiffs.git"
+    "url": "git+https://github.com/francescogabrieli/opendiffs.git"
   },
   "engines": {
     "node": ">=20.19.0"
