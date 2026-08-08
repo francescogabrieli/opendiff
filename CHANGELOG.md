@@ -6,6 +6,12 @@ All notable changes to OpenDiffs are documented here. The project follows [Seman
 
 No unreleased changes yet.
 
+## [0.1.2] - 2026-08-08
+
+### Security
+
+- Updated the indirect development dependency `nanoid` to a non-vulnerable version, clearing the npm audit advisory before the public repository launch.
+
 ## [0.1.1] - 2026-08-08
 
 ### Added
