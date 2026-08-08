@@ -38,8 +38,13 @@ test("installs and removes the OpenDiffs skill for Codex and Claude Code", () =>
     const claudeSkill = join(claudeHome, "skills", "opendiffs", "SKILL.md");
     assert.equal(existsSync(codexSkill), true);
     assert.equal(existsSync(claudeSkill), true);
-    assert.match(readFileSync(codexSkill, "utf8"), /name: opendiffs/);
-    assert.equal(readFileSync(codexSkill, "utf8"), readFileSync(claudeSkill, "utf8"));
+
+    const installedSkill = readFileSync(codexSkill, "utf8");
+    assert.match(installedSkill, /name: opendiffs/);
+    assert.match(installedSkill, /same natural language as the user's original task/);
+    assert.match(installedSkill, /technically competent reader who is new to the repository/);
+    assert.match(installedSkill, /references` are evidence for the narrative, not a substitute for it/);
+    assert.equal(installedSkill, readFileSync(claudeSkill, "utf8"));
 
     const repeated = run(["install", "--agent", "all"], env);
     assert.equal(repeated.status, 0, repeated.stderr);
