@@ -2,7 +2,7 @@
 
 This document separates repository preparation from the package-owner steps required for the first npm release.
 
-The first npm-published version is `0.1.2`. GitHub `v0.1.0` and `v0.1.1` were private prepublish validation releases; they remain immutable rather than being rewritten.
+The first npm-published version is `0.1.3`. GitHub `v0.1.0`, `v0.1.1`, and `v0.1.2` were private prepublish validation releases; they remain immutable rather than being rewritten.
 
 ## Maintainer preparation
 
@@ -35,7 +35,7 @@ Create and inspect the exact tarball:
 
 ```bash
 npm pack
-npm exec --yes --package ./opendiffs-0.1.2.tgz -- opendiffs --help
+npm exec --yes --package ./opendiffs-0.1.3.tgz -- opendiffs --help
 ```
 
 Test installation without touching the real agent configuration by using temporary homes:
@@ -44,7 +44,7 @@ Test installation without touching the real agent configuration by using tempora
 TEST_HOME="$(mktemp -d)"
 CODEX_HOME="$TEST_HOME/codex" \
 CLAUDE_CONFIG_DIR="$TEST_HOME/claude" \
-npx --yes ./opendiffs-0.1.2.tgz install --agent all
+npx --yes ./opendiffs-0.1.3.tgz install --agent all
 
 find "$TEST_HOME" -path '*/skills/opendiffs/SKILL.md' -print
 rm -rf "$TEST_HOME"
@@ -71,7 +71,7 @@ npm view opendiffs version
 
 A `404 Not Found` means no published package currently owns that name. Availability is not reserved until the publish succeeds.
 
-Publish version `0.1.2`:
+Publish version `0.1.3`:
 
 ```bash
 npm publish
@@ -83,8 +83,8 @@ Verify the registry and the real installation path:
 
 ```bash
 npm view opendiffs version
-npx --yes opendiffs@0.1.2 doctor
-npx --yes opendiffs@0.1.2 install
+npx --yes opendiffs@0.1.3 doctor
+npx --yes opendiffs@0.1.3 install
 ```
 
 Restart Codex or Claude Code if it was already open, then invoke the installed OpenDiffs skill from chat.
