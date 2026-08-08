@@ -17,6 +17,8 @@ OpenDiffs is a deterministic local renderer. You, the same coding agent that imp
 4. Read the complete final change again after the last edit.
 5. Do not place source code or the full diff inside `review.json`; store narrative, metadata, checks, risks, assumptions, and precise references only.
 6. Do not ask the user to run `init`, `render`, `validate`, or `open`. The skill owns the complete review flow.
+7. Write the review narrative in the same natural language as the user's original task unless the user explicitly asks for another language. Apply this to review titles and summaries, section prose, reference descriptions, risks, notes, test summaries, assumptions, completion text, and remaining work. Keep code, identifiers, file paths, symbols, and shell commands unchanged.
+8. Explain the implementation for a technically competent reader who is new to the repository. Do not reduce the review to a changelog that merely restates what was added, removed, or renamed.
 
 ## 1. Capture the baseline
 
@@ -66,6 +68,32 @@ Organize the review by implementation intent, not alphabetically. Prefer two to 
 4. verification, migration, generated, or lower-signal supporting work.
 
 A file may appear in more than one section when separate hunks serve different purposes.
+
+### Narrative requirements
+
+Treat the guided review as an onboarding explanation of the change, not as a release note.
+
+Assume the reader knows how to program but has not worked in this repository before. Give them enough context to understand the changed code without already knowing the local architecture.
+
+For each meaningful section, explain the parts that are supported by the code and relevant to the change:
+
+- what responsibility this area of the system has and, when useful, how it behaved before the change;
+- the data flow or control flow through the changed code, including where important values come from and where they go;
+- why the implementation is shaped this way instead of merely naming the APIs or lines that changed;
+- how the change integrates with surrounding modules, state, rendering, persistence, validation, or other relevant boundaries;
+- important invariants, assumptions, edge cases, or trade-offs a maintainer should know;
+- how the cited diff hunks provide evidence for the explanation.
+
+Start from the mental model and then connect it to concrete code. A sentence such as "Added X to implement Y" is not sufficient by itself. Explain the mechanism and the reason the code fits the surrounding system.
+
+Do not invent design intent. When the reason for a choice is not evidenced by the implementation or repository context, describe what the code guarantees and mark any uncertainty explicitly.
+
+Use the review fields deliberately:
+
+- `purpose` explains the design problem or responsibility addressed by the section, not a paraphrase of the diff;
+- `explanation` contains substantive prose that teaches how the implementation works and why it is structured that way;
+- `impact` records observable consequences, architectural effects, invariants, or maintenance implications;
+- `references` are evidence for the narrative, not a substitute for it.
 
 ## 4. Write `.opendiffs/review.json`
 
@@ -154,7 +182,7 @@ Create `.opendiffs/` when necessary and write strict JSON matching schema versio
 }
 ```
 
-Replace every placeholder with real data.
+Replace every placeholder with real data and write all narrative placeholders in the original task's language.
 
 ### Reference requirements
 
