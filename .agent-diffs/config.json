@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "baseRef": "HEAD",
+  "includeUntracked": true,
+  "includeStaged": true,
+  "includeUnstaged": true,
+  "defaultContextLines": 5,
+  "openBrowser": true,
+  "collapseGeneratedFiles": true,
+  "collapseLockfiles": true,
+  "ignoredPaths": [
+    "dist/**",
+    "coverage/**",
+    ".next/**"
+  ],
+  "generatedPaths": [
+    "**/*.generated.ts",
+    "**/generated/**"
+  ]
+}
