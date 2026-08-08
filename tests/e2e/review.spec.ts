@@ -7,6 +7,10 @@ test.describe("OpenDiffs guided review", () => {
     await page.goto(demoUrl);
 
     await expect(page.getByTestId("guided-review")).toBeVisible();
+    await page.getByRole("button", { name: "Diff", exact: true }).click();
+    const changedFileCount = await page.locator('[data-testid^="diff-file-"]').count();
+    await expect(page.getByTestId("changed-files-summary")).toHaveText(`${changedFileCount} files changed`);
+    await page.getByRole("button", { name: "Guide", exact: true }).click();
     await expect(page.getByRole("heading", { name: /Add coordinated token refresh/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "Guide" })).toHaveAttribute("aria-current", "page");
     await expect(page.getByText("01 / 04")).toBeVisible();

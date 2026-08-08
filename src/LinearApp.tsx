@@ -703,6 +703,7 @@ function ReviewGuide({
           <ChevronRight size={13} />
           <GitPullRequest className="lg-pr-icon" size={13} />
           <span className="lg-pr-title">[{issueKey}] {review.review.title}</span>
+          <span className="lg-top-files" data-testid="changed-files-summary">{diff.files.length} files changed</span>
           <span className="lg-top-additions">+{review.stats.additions}</span>
           <span className="lg-top-deletions">−{review.stats.deletions}</span>
           <IconButton label={starred ? "Unstar review" : "Star review"} onClick={() => setStarred((value) => !value)} active={starred}><Star size={14} fill={starred ? "currentColor" : "none"} /></IconButton>

@@ -62,6 +62,7 @@ code { font-family: "SFMono-Regular", "JetBrains Mono", Consolas, monospace; }
 .lg-issue-mark { width: 13px; height: 13px; flex: 0 0 auto; border: 2px solid #28a8be; border-radius: 50%; }
 .lg-pr-icon { flex: 0 0 auto; color: #32b861; }
 .lg-pr-title { min-width: 0; overflow: hidden; color: #d7d7da; text-overflow: ellipsis; white-space: nowrap; }
+.lg-top-files { color: #98989e; white-space: nowrap; }
 .lg-top-additions { color: var(--lg-green); font-family: "SFMono-Regular", monospace; }
 .lg-top-deletions { color: var(--lg-red); font-family: "SFMono-Regular", monospace; }
 .lg-topbar-actions { flex: 0 0 auto; gap: 3px; }
