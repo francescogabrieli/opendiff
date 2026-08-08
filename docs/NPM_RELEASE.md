@@ -2,6 +2,8 @@
 
 This document separates repository preparation from the package-owner steps required for the first npm release.
 
+The first npm-published version is `0.1.1`. GitHub `v0.1.0` was created during prepublish validation before the final README and repository-config changes, so it remains immutable rather than being rewritten.
+
 ## Maintainer preparation
 
 Before asking the npm package owner to publish:
