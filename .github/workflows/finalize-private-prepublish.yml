@@ -1,0 +1,107 @@
+name: Finalize private prepublish
+
+on:
+  push:
+    branches:
+      - release/finalize-private-prepublish
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply canonical prepublish state
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p .opendiffs
+          git mv .agent-diffs/config.json .opendiffs/config.json
+          rmdir .agent-diffs
+
+          npm version 0.1.1 --no-git-tag-version
+
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+
+          const packagePath = 'package.json';
+          const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+          pkg.homepage = 'https://github.com/francescogabrieli/opendiffs#readme';
+          pkg.bugs = { url: 'https://github.com/francescogabrieli/opendiffs/issues' };
+          pkg.repository = { type: 'git', url: 'git+https://github.com/francescogabrieli/opendiffs.git' };
+          fs.writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
+
+          const changelogPath = 'CHANGELOG.md';
+          const changelog = fs.readFileSync(changelogPath, 'utf8');
+          const marker = '## [0.1.0] - 2026-08-05';
+          if (!changelog.includes(marker)) throw new Error('Expected 0.1.0 changelog marker not found');
+          const release = `## [0.1.1] - 2026-08-08\n\n### Added\n\n- Added a repository-level default \`.opendiffs/config.json\` aligned with the runtime configuration path.\n\n### Changed\n\n- Expanded the README with clearer installation, usage, release, and development guidance.\n- Cleaned up the GitHub release workflow so an existing version is not recreated on later pushes.\n- Normalized npm package repository metadata to the canonical lowercase GitHub URL.\n\n`;
+          fs.writeFileSync(changelogPath, changelog.replace(marker, `${release}${marker}`));
+
+          const npmReleasePath = 'docs/NPM_RELEASE.md';
+          const npmRelease = fs.readFileSync(npmReleasePath, 'utf8').replaceAll('0.1.0', '0.1.1');
+          fs.writeFileSync(npmReleasePath, npmRelease);
+
+          const bugPath = '.github/ISSUE_TEMPLATE/bug.yml';
+          const bug = fs.readFileSync(bugPath, 'utf8').replace('placeholder: 0.1.0 or commit SHA', 'placeholder: 0.1.1 or commit SHA');
+          fs.writeFileSync(bugPath, bug);
+          NODE
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run checks
+        run: npm run check
+
+      - name: Build and test exact tarball
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm pack
+          test -f opendiffs-0.1.1.tgz
+          npm exec --yes --package ./opendiffs-0.1.1.tgz -- opendiffs --help
+          TEST_HOME="$(mktemp -d)"
+          CODEX_HOME="$TEST_HOME/codex" \
+          CLAUDE_CONFIG_DIR="$TEST_HOME/claude" \
+          npm exec --yes --package ./opendiffs-0.1.1.tgz -- opendiffs install --agent all
+          test -f "$TEST_HOME/codex/skills/opendiffs/SKILL.md"
+          test -f "$TEST_HOME/claude/skills/opendiffs/SKILL.md"
+          rm -rf "$TEST_HOME" opendiffs-0.1.1.tgz
+
+      - name: Verify naming and version consistency
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e .agent-diffs
+          test -f .opendiffs/config.json
+          test "$(node --print "require('./package.json').version")" = "0.1.1"
+          test "$(node --print "require('./package-lock.json').version")" = "0.1.1"
+          test "$(node --print "require('./package-lock.json').packages[''].version")" = "0.1.1"
+          ! git grep -n -E '(^|[^s])\.agent-diffs(/|$)' -- ':!CHANGELOG.md'
+
+      - name: Remove temporary workflow and commit final state
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/finalize-private-prepublish.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A -f .opendiffs/config.json
+          git status --short
+          git commit -m 'Prepare OpenDiffs 0.1.1 for first npm publish'
+          git push origin HEAD:release/finalize-private-prepublish
