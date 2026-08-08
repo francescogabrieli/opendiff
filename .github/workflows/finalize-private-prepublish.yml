@@ -92,7 +92,7 @@ jobs:
           test "$(node --print "require('./package.json').version")" = "0.1.1"
           test "$(node --print "require('./package-lock.json').version")" = "0.1.1"
           test "$(node --print "require('./package-lock.json').packages[''].version")" = "0.1.1"
-          ! git grep -n -E '(^|[^s])\.agent-diffs(/|$)' -- ':!CHANGELOG.md'
+          ! git grep -n -E '(^|[^s])\.agent-diffs(/|$)' -- ':!CHANGELOG.md' ':!.github/workflows/finalize-private-prepublish.yml'
 
       - name: Remove temporary workflow and commit final state
         shell: bash
