@@ -6,6 +6,18 @@ All notable changes to OpenDiffs are documented here. The project follows [Seman
 
 No unreleased changes yet.
 
+## [0.1.1] - 2026-08-08
+
+### Added
+
+- Added a repository-level default `.opendiffs/config.json` aligned with the runtime configuration path.
+
+### Changed
+
+- Expanded the README with clearer installation, usage, release, and development guidance.
+- Cleaned up the GitHub release workflow so an existing version is not recreated on later pushes.
+- Normalized npm package repository metadata to the canonical lowercase GitHub URL.
+
 ## [0.1.0] - 2026-08-05
 
 ### Added
