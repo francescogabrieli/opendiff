@@ -6,6 +6,13 @@ All notable changes to OpenDiffs are documented here. The project follows [Seman
 
 No unreleased changes yet.
 
+## [0.1.3] - 2026-08-08
+
+### Changed
+
+- Guided review narrative now follows the natural language of the user's original task unless another language is explicitly requested.
+- The bundled `@opendiffs` skill now writes onboarding-style code explanations for readers who are new to the repository, covering surrounding responsibility, data or control flow, implementation reasoning, integration, invariants, trade-offs, and diff references as evidence instead of reducing sections to changelog-style summaries.
+
 ## [0.1.2] - 2026-08-08
 
 ### Security
