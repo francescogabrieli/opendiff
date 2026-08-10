@@ -1,6 +1,6 @@
 # Releasing
 
-This checklist is for maintainers preparing a public OpenDiffs release.
+This checklist is for maintainers preparing a public OpenDiff release.
 
 ## Before tagging
 
@@ -19,7 +19,7 @@ This checklist is for maintainers preparing a public OpenDiffs release.
    ```
 
 5. Inspect the tarball listing. It must include `cli/`, `dist/`, `schemas/`, `skills/`, documentation media, `README.md`, and `LICENSE`, and must exclude local review data and test artifacts.
-6. Install the packed tarball into a temporary directory and smoke-test `opendiffs --help`, `skill install`, and a small review against a temporary Git repository.
+6. Install the packed tarball into a temporary directory and smoke-test `opendiff --help`, `skill install`, and a small review against a temporary Git repository.
 
 ## Publish
 

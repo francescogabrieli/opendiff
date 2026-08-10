@@ -1,17 +1,24 @@
 # Changelog
 
-All notable changes to OpenDiffs are documented here. The project follows [Semantic Versioning](https://semver.org/) for package releases and versions the review document contract separately through `schemaVersion`.
+All notable changes to OpenDiff are documented here. The project follows [Semantic Versioning](https://semver.org/) for package releases and versions the review document contract separately through `schemaVersion`.
 
 ## [Unreleased]
 
 No unreleased changes yet.
+
+## [0.1.4] - 2026-08-10
+
+### Changed
+
+- Renamed the product to OpenDiff across the repository, npm package, CLI, skill, generated review directory, documentation, schemas, tests, and release metadata.
+- The canonical public install command is now `npx --yes opendiff@latest install`, the agent skill is `@opendiff`, and generated review state lives under `.opendiff/`.
 
 ## [0.1.3] - 2026-08-08
 
 ### Changed
 
 - Guided review narrative now follows the natural language of the user's original task unless another language is explicitly requested.
-- The bundled `@opendiffs` skill now writes onboarding-style code explanations for readers who are new to the repository, covering surrounding responsibility, data or control flow, implementation reasoning, integration, invariants, trade-offs, and diff references as evidence instead of reducing sections to changelog-style summaries.
+- The bundled `@opendiff` skill now writes onboarding-style code explanations for readers who are new to the repository, covering surrounding responsibility, data or control flow, implementation reasoning, integration, invariants, trade-offs, and diff references as evidence instead of reducing sections to changelog-style summaries.
 
 ## [0.1.2] - 2026-08-08
 
@@ -23,7 +30,7 @@ No unreleased changes yet.
 
 ### Added
 
-- Added a repository-level default `.opendiffs/config.json` aligned with the runtime configuration path.
+- Added a repository-level default `.opendiff/config.json` aligned with the runtime configuration path.
 
 ### Changed
 
@@ -40,12 +47,12 @@ No unreleased changes yet.
 - GitHub issue and pull request templates, continuous integration, and dependency updates.
 - Package metadata and tarball validation for the first public npm release.
 - On-demand syntax grammar loading to keep the production renderer compact.
-- A one-command installer for the bundled `@opendiffs` skill in Codex and Claude Code.
+- A one-command installer for the bundled `@opendiff` skill in Codex and Claude Code.
 - The complete local guided-review workflow: baseline capture, agent-authored narrative, schema validation, Git diff collection, rendering, and browser opening.
 
 ### Changed
 
-- Standardized the product, package, CLI, skill, generated review directory, documentation, schemas, examples, and tests on the OpenDiffs naming.
+- Standardized the product, package, CLI, skill, generated review directory, documentation, schemas, examples, and tests on the OpenDiff naming.
 - Review risks and verification results now have validated structures across the runtime and public JSON schemas.
 - The bundled agent skill now captures baseline ownership, validation repair, and explicit handoff requirements.
 

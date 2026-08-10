@@ -5,7 +5,7 @@ dist/
 !.env.example
 PROJECT.md
 .DS_Store
-.opendiffs/
+.opendiff/
 public/data/
 test-results/
 playwright-report/

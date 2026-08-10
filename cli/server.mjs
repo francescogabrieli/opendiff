@@ -19,35 +19,35 @@ function readDocument(path) {
 }
 
 export function createHandler(root) {
-  const agentDir = join(root, ".opendiffs");
+  const agentDir = join(root, ".opendiff");
   const reviewPath = join(agentDir, "review.json");
   const renderStatusPath = join(agentDir, "render", "status.json");
   const publicStatusPath = join(root, "public", "data", "status.json");
 
   return (req, res, next) => {
     const requestUrl = new URL(req.url || "/", "http://localhost");
-    if (!requestUrl.pathname.startsWith("/__opendiffs/")) {
+    if (!requestUrl.pathname.startsWith("/__opendiff/")) {
       next?.();
       return;
     }
     const gitRoot = getGitRoot(root);
     if (!gitRoot) {
-      json(res, 400, { code: "unavailable", message: "OpenDiffs could not find a Git repository from the current directory." });
+      json(res, 400, { code: "unavailable", message: "OpenDiff could not find a Git repository from the current directory." });
       return;
     }
-    if (requestUrl.pathname === "/__opendiffs/data/review") {
+    if (requestUrl.pathname === "/__opendiff/data/review") {
       const review = readDocument(reviewPath);
       if (!review) {
-        json(res, 404, { code: "missing-review", message: "No OpenDiffs review was found. Ask the coding agent to generate .opendiffs/review.json." });
+        json(res, 404, { code: "missing-review", message: "No OpenDiff review was found. Ask the coding agent to generate .opendiff/review.json." });
         return;
       }
       json(res, 200, review);
       return;
     }
-    if (requestUrl.pathname === "/__opendiffs/data/diff") {
+    if (requestUrl.pathname === "/__opendiff/data/diff") {
       const review = readDocument(reviewPath);
       if (!review) {
-        json(res, 404, { code: "missing-review", message: "No OpenDiffs review was found. Ask the coding agent to generate .opendiffs/review.json." });
+        json(res, 404, { code: "missing-review", message: "No OpenDiff review was found. Ask the coding agent to generate .opendiff/review.json." });
         return;
       }
       try {
@@ -77,11 +77,11 @@ export function createHandler(root) {
       }
       return;
     }
-    if (requestUrl.pathname === "/__opendiffs/status") {
+    if (requestUrl.pathname === "/__opendiff/status") {
       const renderedStatus = readDocument(renderStatusPath) || readDocument(publicStatusPath) || {};
       const review = readDocument(reviewPath);
       if (!review) {
-        json(res, 404, { code: "missing-review", message: "No OpenDiffs review was found." });
+        json(res, 404, { code: "missing-review", message: "No OpenDiff review was found." });
         return;
       }
       try {
@@ -175,7 +175,7 @@ export function createStaticHandler(rendererRoot) {
     const filePath = existsSync(requestedPath) && statSync(requestedPath).isFile() ? requestedPath : indexPath;
     if (!existsSync(filePath)) {
       res.statusCode = 503;
-      res.end("The OpenDiffs renderer has not been built.");
+      res.end("The OpenDiff renderer has not been built.");
       return;
     }
     sendStaticFile(req, res, filePath);
@@ -188,10 +188,10 @@ export function createRequestHandler(repositoryRoot, rendererRoot) {
   return (req, res) => dataHandler(req, res, () => staticHandler(req, res));
 }
 
-export function createOpenDiffsPlugin(root = process.cwd()) {
+export function createOpenDiffPlugin(root = process.cwd()) {
   const handler = createHandler(root);
   return {
-    name: "opendiffs-data",
+    name: "opendiff-data",
     configureServer(server) {
       server.middlewares.use(handler);
     },

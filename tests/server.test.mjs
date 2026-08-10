@@ -26,10 +26,10 @@ class MockResponse extends Writable {
 }
 
 function createRenderer() {
-  const root = mkdtempSync(join(tmpdir(), "opendiffs-server-"));
+  const root = mkdtempSync(join(tmpdir(), "opendiff-server-"));
   mkdirSync(join(root, "assets"));
-  writeFileSync(join(root, "index.html"), "<!doctype html><title>OpenDiffs</title>");
-  writeFileSync(join(root, "assets", "app.js"), "console.log('OpenDiffs');");
+  writeFileSync(join(root, "index.html"), "<!doctype html><title>OpenDiff</title>");
+  writeFileSync(join(root, "assets", "app.js"), "console.log('OpenDiff');");
   return createStaticHandler(root);
 }
 
@@ -45,7 +45,7 @@ test("serves the bundled renderer and its immutable assets", async () => {
   const handler = createRenderer();
   const page = await request(handler, "GET", "/review/section");
   assert.equal(page.statusCode, 200);
-  assert.match(page.body, /OpenDiffs/);
+  assert.match(page.body, /OpenDiff/);
   assert.equal(page.headers.get("cache-control"), "no-cache");
 
   const asset = await request(handler, "GET", "/assets/app.js");

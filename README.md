@@ -1,21 +1,21 @@
-# OpenDiffs
+# OpenDiff
 
-[![CI](https://github.com/francescogabrieli/OpenDiffs/actions/workflows/ci.yml/badge.svg)](https://github.com/francescogabrieli/OpenDiffs/actions/workflows/ci.yml)
+[![CI](https://github.com/francescogabrieli/opendiff/actions/workflows/ci.yml/badge.svg)](https://github.com/francescogabrieli/opendiff/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node.js 20.19+](https://img.shields.io/badge/node-%3E%3D20.19-339933.svg)](package.json)
-[![npm](https://img.shields.io/npm/v/opendiffs.svg)](https://www.npmjs.com/package/opendiffs)
+[![npm](https://img.shields.io/npm/v/opendiff.svg)](https://www.npmjs.com/package/opendiff)
 
-OpenDiffs turns a coding agent's working-tree changes into a local, guided code review. The same agent that implements the work explains it; OpenDiffs validates those explanations against the real Git diff and presents the review by intent instead of filename.
+OpenDiff turns a coding agent's working-tree changes into a local, guided code review. The same agent that implements the work explains it; OpenDiff validates those explanations against the real Git diff and presents the review by intent instead of filename.
 
-![OpenDiffs guided review](docs/opendiffs-demo.gif)
+![OpenDiff guided review](docs/opendiff-demo.gif)
 
-OpenDiffs is **local-first** and **deterministic**. It does not upload source code, call an additional model, create a pull request, or modify the repository being reviewed. Everything runs on your machine, against your own Git history.
+OpenDiff is **local-first** and **deterministic**. It does not upload source code, call an additional model, create a pull request, or modify the repository being reviewed. Everything runs on your machine, against your own Git history.
 
-## Why OpenDiffs?
+## Why OpenDiff?
 
 Agent-generated changes are often easier to produce than to understand. A raw diff tells you what changed, but not the intended reading order, why several files belong together, which checks ran, or where uncertainty remains.
 
-OpenDiffs adds that missing presentation layer:
+OpenDiff adds that missing presentation layer:
 
 - a **guided path** organized by implementation intent, not filename order;
 - **explanations anchored** to exact files and lines, validated against the real diff;
@@ -34,27 +34,27 @@ No accounts, no remote services, no API keys.
 
 ## Getting started
 
-OpenDiffs is installed once from npm as a package plus an agent skill. No repository clone or manual file copy is required.
+OpenDiff is installed once from npm as a package plus an agent skill. No repository clone or manual file copy is required.
 
 ### 1. Install the agent skill
 
 ```bash
-npx --yes opendiffs@latest install
+npx --yes opendiff@latest install
 ```
 
 The installer detects Codex and Claude Code and writes the bundled skill to the appropriate local skill directories:
 
 ```text
-~/.codex/skills/opendiffs/SKILL.md
-~/.claude/skills/opendiffs/SKILL.md
+~/.codex/skills/opendiff/SKILL.md
+~/.claude/skills/opendiff/SKILL.md
 ```
 
 When both agents are present, both are configured. To choose explicitly:
 
 ```bash
-npx --yes opendiffs@latest install --agent codex
-npx --yes opendiffs@latest install --agent claude
-npx --yes opendiffs@latest install --agent all
+npx --yes opendiff@latest install --agent codex
+npx --yes opendiff@latest install --agent claude
+npx --yes opendiff@latest install --agent all
 ```
 
 ### 2. Invoke the skill
@@ -62,10 +62,10 @@ npx --yes opendiffs@latest install --agent all
 Restart an agent that was already open, then invoke the skill from chat:
 
 ```text
-@opendiffs implementa questa modifica e mostrami la guided review
+@opendiff implementa questa modifica e mostrami la guided review
 ```
 
-The coding agent implements the task, records the final narrative and references, validates them against the actual Git diff, starts the bundled local renderer, and opens the complete OpenDiffs interface in your browser.
+The coding agent implements the task, records the final narrative and references, validates them against the actual Git diff, starts the bundled local renderer, and opens the complete OpenDiff interface in your browser.
 
 ### 3. Read the review
 
@@ -74,9 +74,9 @@ The browser opens on `http://localhost:4173` with a Linear-style guided review: 
 ### Maintenance
 
 ```bash
-npx --yes opendiffs@latest doctor
-npx --yes opendiffs@latest install --force
-npx --yes opendiffs@latest uninstall
+npx --yes opendiff@latest doctor
+npx --yes opendiff@latest install --force
+npx --yes opendiff@latest uninstall
 ```
 
 `doctor` checks Node, Git, the bundled renderer, and the agent installation paths.
@@ -84,17 +84,17 @@ npx --yes opendiffs@latest uninstall
 ## How it works
 
 ```text
-user invokes @opendiffs
+user invokes @opendiff
    │
    ▼
 coding agent captures the Git baseline
    │
    ├── implements and verifies the requested change
    ├── reads the complete final diff
-   └── writes .opendiffs/review.json
+   └── writes .opendiff/review.json
    │
    ▼
-npx opendiffs review
+npx opendiff review
    │
    ├── validates the authored references
    ├── derives the real staged, unstaged, and untracked Git diff
@@ -110,14 +110,14 @@ The skill normally invokes these automatically. They are documented for developm
 
 | Command | Purpose |
 | --- | --- |
-| `opendiffs install` | Install the `@opendiffs` skill for Codex and/or Claude Code. |
-| `opendiffs uninstall` | Remove the installed skill. |
-| `opendiffs doctor` | Check Node, Git, the bundled renderer, and agent installation paths. |
-| `opendiffs validate` | Validate the review schema, Git base, IDs, files, and line references. |
-| `opendiffs render` | Materialize the review against the current working tree. |
-| `opendiffs open` | Start the bundled local renderer. |
-| `opendiffs review` | Validate, render, and open in one command. |
-| `opendiffs export --output PATH` | Create a portable static review folder. |
+| `opendiff install` | Install the `@opendiff` skill for Codex and/or Claude Code. |
+| `opendiff uninstall` | Remove the installed skill. |
+| `opendiff doctor` | Check Node, Git, the bundled renderer, and agent installation paths. |
+| `opendiff validate` | Validate the review schema, Git base, IDs, files, and line references. |
+| `opendiff render` | Materialize the review against the current working tree. |
+| `opendiff open` | Start the bundled local renderer. |
+| `opendiff review` | Validate, render, and open in one command. |
+| `opendiff export --output PATH` | Create a portable static review folder. |
 
 Common runtime options are `--base REF`, `--context N`, `--port PORT`, `--no-open`, and `--force`.
 
@@ -133,11 +133,11 @@ schemas/   the machine-readable review schema
 docs/      format and architecture documentation
 ```
 
-The `prepack` script runs tests and creates the production renderer before npm assembles the package. The interface opened by `npx opendiffs review` is therefore built from the same frontend source as the repository.
+The `prepack` script runs tests and creates the production renderer before npm assembles the package. The interface opened by `npx opendiff review` is therefore built from the same frontend source as the repository.
 
 ## Review format
 
-The agent-owned `.opendiffs/review.json` contains metadata, ordered sections, explanations, impacts, precise code references, verification results, risks, assumptions, and completion state. OpenDiffs separately derives the diff contents and statistics from Git.
+The agent-owned `.opendiff/review.json` contains metadata, ordered sections, explanations, impacts, precise code references, verification results, risks, assumptions, and completion state. OpenDiff separately derives the diff contents and statistics from Git.
 
 ```json
 {
@@ -151,11 +151,11 @@ The agent-owned `.opendiffs/review.json` contains metadata, ordered sections, ex
 }
 ```
 
-See the [review format guide](docs/REVIEW_FORMAT.md), the machine-readable [JSON Schema](schemas/review.schema.json), and the bundled [OpenDiffs skill](skills/opendiffs/SKILL.md).
+See the [review format guide](docs/REVIEW_FORMAT.md), the machine-readable [JSON Schema](schemas/review.schema.json), and the bundled [OpenDiff skill](skills/opendiff/SKILL.md).
 
 ## Publishing to npm
 
-OpenDiffs is published to the npm registry as the `opendiffs` package. Releases follow [Semantic Versioning](https://semver.org/); the review document contract is versioned separately through `schemaVersion`.
+OpenDiff is published to the npm registry as the `opendiff` package. Releases follow [Semantic Versioning](https://semver.org/); the review document contract is versioned separately through `schemaVersion`.
 
 ### Before you publish
 
@@ -190,12 +190,12 @@ npm publish
 ### Verify the release
 
 ```bash
-npm view opendiffs version
-npx --yes opendiffs@latest doctor
-npx --yes opendiffs@latest install
+npm view opendiff version
+npx --yes opendiff@latest doctor
+npx --yes opendiff@latest install
 ```
 
-Then invoke `@opendiffs` from a coding agent in a fresh repository to confirm the end-to-end flow.
+Then invoke `@opendiff` from a coding agent in a fresh repository to confirm the end-to-end flow.
 
 ### Notes
 
@@ -215,8 +215,8 @@ Requirements:
 - Chrome or Chromium for end-to-end tests.
 
 ```bash
-git clone https://github.com/francescogabrieli/OpenDiffs.git
-cd OpenDiffs
+git clone https://github.com/francescogabrieli/opendiff.git
+cd opendiff
 npm ci
 npm run dev
 npm test
@@ -228,7 +228,7 @@ Use `npm run check` for the fast CI-equivalent checks. Browser fixtures are docu
 
 ## Project status
 
-OpenDiffs is pre-1.0. The review schema is versioned independently and currently at `1.0`; CLI and UI behavior may evolve between minor releases. Compatibility-impacting changes must be documented in [CHANGELOG.md](CHANGELOG.md).
+OpenDiff is pre-1.0. The review schema is versioned independently and currently at `1.0`; CLI and UI behavior may evolve between minor releases. Compatibility-impacting changes must be documented in [CHANGELOG.md](CHANGELOG.md).
 
 ## Security and privacy
 
@@ -240,6 +240,6 @@ Report vulnerabilities privately using [SECURITY.md](SECURITY.md). For usage que
 
 Bug reports, focused feature proposals, documentation improvements, fixtures, and code changes are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
 
-OpenDiffs is released under the MIT License.
+OpenDiff is released under the MIT License.
 
-OpenDiffs is an independent project and is not affiliated with or endorsed by Linear. Linear is used only as a product-experience reference; no proprietary source code or assets are included.
+OpenDiff is an independent project and is not affiliated with or endorsed by Linear. Linear is used only as a product-experience reference; no proprietary source code or assets are included.

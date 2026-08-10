@@ -501,11 +501,11 @@ function ReviewGuide({
 }) {
   const { review, diff } = bundle;
   const [activeView, setActiveView] = useState<ReviewView>(() => {
-    const stored = window.localStorage.getItem(`opendiffs:${review.review.id}:view`);
+    const stored = window.localStorage.getItem(`opendiff:${review.review.id}:view`);
     return stored === "activity" || stored === "diff" || stored === "guide" ? stored : "guide";
   });
   const [activeSectionId, setActiveSectionId] = useState(
-    () => window.localStorage.getItem(`opendiffs:${review.review.id}:section`) ?? review.sections[0]?.id ?? "",
+    () => window.localStorage.getItem(`opendiff:${review.review.id}:section`) ?? review.sections[0]?.id ?? "",
   );
   const [expandedFileKey, setExpandedFileKey] = useState(() => {
     const fileId = window.location.hash.slice(1).split("/")[0];
@@ -517,28 +517,28 @@ function ReviewGuide({
     () => window.location.hash.slice(1).split("/")[1] ?? "",
   );
   const [contextLines, setContextLines] = useState(() => {
-    const stored = Number(window.localStorage.getItem(`opendiffs:${review.review.id}:context`));
+    const stored = Number(window.localStorage.getItem(`opendiff:${review.review.id}:context`));
     return stored === 3 || stored === 5 || stored === 8 ? stored : 5;
   });
   const [diffMode, setDiffMode] = useState<DiffMode>(() =>
-    window.localStorage.getItem(`opendiffs:${review.review.id}:diff-mode`) === "split" ? "split" : "unified",
+    window.localStorage.getItem(`opendiff:${review.review.id}:diff-mode`) === "split" ? "split" : "unified",
   );
   const [structuralHighlighting, setStructuralHighlighting] = useState(
-    () => window.localStorage.getItem(`opendiffs:${review.review.id}:structural`) !== "false",
+    () => window.localStorage.getItem(`opendiff:${review.review.id}:structural`) !== "false",
   );
   const [wrapLines, setWrapLines] = useState(
-    () => window.localStorage.getItem(`opendiffs:${review.review.id}:wrap`) === "true",
+    () => window.localStorage.getItem(`opendiff:${review.review.id}:wrap`) === "true",
   );
   const [reviewedFileIds, setReviewedFileIds] = useState<Set<string>>(() => {
     try {
-      const stored = JSON.parse(window.localStorage.getItem(`opendiffs:${review.review.id}:reviewed`) ?? "[]");
+      const stored = JSON.parse(window.localStorage.getItem(`opendiff:${review.review.id}:reviewed`) ?? "[]");
       return new Set(Array.isArray(stored) ? stored.filter((value): value is string => typeof value === "string") : []);
     } catch {
       return new Set();
     }
   });
   const [starred, setStarred] = useState(
-    () => window.localStorage.getItem(`opendiffs:${review.review.id}:starred`) === "true",
+    () => window.localStorage.getItem(`opendiff:${review.review.id}:starred`) === "true",
   );
   const [splitAvailable, setSplitAvailable] = useState(() => window.innerWidth >= 960);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -557,20 +557,20 @@ function ReviewGuide({
 
   useEffect(() => {
     if (!activeSectionId) return;
-    window.localStorage.setItem(`opendiffs:${review.review.id}:section`, activeSectionId);
+    window.localStorage.setItem(`opendiff:${review.review.id}:section`, activeSectionId);
   }, [activeSectionId, review.review.id]);
 
   useEffect(() => {
-    window.localStorage.setItem(`opendiffs:${review.review.id}:view`, activeView);
+    window.localStorage.setItem(`opendiff:${review.review.id}:view`, activeView);
   }, [activeView, review.review.id]);
 
   useEffect(() => {
-    window.localStorage.setItem(`opendiffs:${review.review.id}:context`, String(contextLines));
-    window.localStorage.setItem(`opendiffs:${review.review.id}:diff-mode`, diffMode);
-    window.localStorage.setItem(`opendiffs:${review.review.id}:structural`, String(structuralHighlighting));
-    window.localStorage.setItem(`opendiffs:${review.review.id}:wrap`, String(wrapLines));
-    window.localStorage.setItem(`opendiffs:${review.review.id}:reviewed`, JSON.stringify([...reviewedFileIds]));
-    window.localStorage.setItem(`opendiffs:${review.review.id}:starred`, String(starred));
+    window.localStorage.setItem(`opendiff:${review.review.id}:context`, String(contextLines));
+    window.localStorage.setItem(`opendiff:${review.review.id}:diff-mode`, diffMode);
+    window.localStorage.setItem(`opendiff:${review.review.id}:structural`, String(structuralHighlighting));
+    window.localStorage.setItem(`opendiff:${review.review.id}:wrap`, String(wrapLines));
+    window.localStorage.setItem(`opendiff:${review.review.id}:reviewed`, JSON.stringify([...reviewedFileIds]));
+    window.localStorage.setItem(`opendiff:${review.review.id}:starred`, String(starred));
   }, [contextLines, diffMode, review.review.id, reviewedFileIds, starred, structuralHighlighting, wrapLines]);
 
   useEffect(() => {
@@ -844,7 +844,7 @@ function ReviewGuide({
               <h1>[{issueKey}] {review.review.title}</h1>
               <div className="lg-guide-meta">
                 <span className="lg-meta-logo"><span /></span>
-                <span>OpenDiffs</span><span>·</span><span>{review.project.name}</span><span>·</span>
+                <span>OpenDiff</span><span>·</span><span>{review.project.name}</span><span>·</span>
                 <GitBranch size={12} /><span>{review.git.branch}</span><span>←</span>
                 <GitCommitHorizontal size={12} /><span>{review.git.baseCommit}</span>
               </div>
@@ -913,8 +913,8 @@ function loadErrorCopy(error: unknown): { title: string; body: string; detail?: 
   if (error instanceof ReviewLoadError) {
     if (error.kind === "missing-review") {
       return {
-        title: "No OpenDiffs review was found",
-        body: "Ask the coding agent to generate .opendiffs/review.json, then reload.",
+        title: "No OpenDiff review was found",
+        body: "Ask the coding agent to generate .opendiff/review.json, then reload.",
       };
     }
     if (error.kind === "missing-base") {
@@ -930,14 +930,14 @@ function loadErrorCopy(error: unknown): { title: string; body: string; detail?: 
       };
     }
     return {
-      title: "OpenDiffs could not load this review",
+      title: "OpenDiff could not load this review",
       body: error.message,
       detail: error.detail,
     };
   }
 
   return {
-    title: "OpenDiffs could not load this review",
+    title: "OpenDiff could not load this review",
     body: error instanceof Error ? error.message : "An unknown error occurred.",
   };
 }

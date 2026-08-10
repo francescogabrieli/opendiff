@@ -28,7 +28,7 @@ const hunk = (id: string, content: string): DiffLine => ({ id, type: "hunk", con
 
 export const SAMPLE_REVIEW: ReviewData = {
   schemaVersion: "1.0",
-  project: { name: "opendiffs", root: "." },
+  project: { name: "opendiff", root: "." },
   review: {
     id: "2026-07-29-token-refresh",
     title: "Add coordinated token refresh",

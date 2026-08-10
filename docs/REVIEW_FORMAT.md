@@ -1,10 +1,10 @@
 # Review format
 
-OpenDiffs schema `1.0` separates agent-authored context from Git-derived code. The canonical machine-readable contract is [`schemas/review.schema.json`](../schemas/review.schema.json); the CLI validates the same structure with Zod.
+OpenDiff schema `1.0` separates agent-authored context from Git-derived code. The canonical machine-readable contract is [`schemas/review.schema.json`](../schemas/review.schema.json); the CLI validates the same structure with Zod.
 
 ## File location
 
-Place the document at `.opendiffs/review.json` in the repository being reviewed. It must be strict JSON: comments, trailing commas, and Markdown code fences are invalid.
+Place the document at `.opendiff/review.json` in the repository being reviewed. It must be strict JSON: comments, trailing commas, and Markdown code fences are invalid.
 
 ## Top-level fields
 
@@ -41,7 +41,7 @@ A reference uses repository-relative POSIX paths and inclusive line ranges:
 
 `kind` is `primary`, `secondary`, or `test`. Use small ranges that intersect the actual diff. Create separate references for separate hunks. IDs must be unique across the document.
 
-For pure additions, set `oldLines` to `null`. For modified lines, include the corresponding old-side range. Deleted-only and binary changes have limited new-side line information; follow the rules in the bundled [agent skill](../skills/opendiffs/SKILL.md) and disclose unresolved warnings.
+For pure additions, set `oldLines` to `null`. For modified lines, include the corresponding old-side range. Deleted-only and binary changes have limited new-side line information; follow the rules in the bundled [agent skill](../skills/opendiff/SKILL.md) and disclose unresolved warnings.
 
 ## Verification records
 
@@ -90,7 +90,7 @@ Completion status is `complete`, `partial`, or `blocked`. Put concrete follow-up
 From the target repository root:
 
 ```bash
-opendiffs validate --base HEAD --context 6
+opendiff validate --base HEAD --context 6
 ```
 
 Schema violations and duplicate IDs block rendering. Missing files and unresolved line ranges remain visible warnings so the rest of the review can still be inspected, but producers should repair them whenever the final diff is available.

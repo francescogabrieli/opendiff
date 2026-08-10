@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 const demoUrl = "/?demo=1";
 
-test.describe("OpenDiffs guided review", () => {
+test.describe("OpenDiff guided review", () => {
   test("opens the Linear-style guided review", async ({ page }) => {
     await page.goto(demoUrl);
 
@@ -184,6 +184,6 @@ test.describe("OpenDiffs guided review", () => {
     await page.goto("/?fixture=missing");
 
     await expect(page.getByTestId("load-error")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "No OpenDiffs review was found" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "No OpenDiff review was found" })).toBeVisible();
   });
 });
