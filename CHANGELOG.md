@@ -6,6 +6,13 @@ All notable changes to OpenDiff are documented here. The project follows [Semant
 
 No unreleased changes yet.
 
+## [0.1.5] - 2026-08-10
+
+### Fixed
+
+- Prevent local guided-review data from ever being copied into the production renderer or included in the npm package. Vite no longer copies the local `public/` directory, and npm now packages only `dist/index.html` and `dist/assets/` from the renderer build.
+- Added a release-time package isolation check using synthetic local review data so future packages fail validation if `public/data` or `dist/data` leaks into the tarball.
+
 ## [0.1.4] - 2026-08-10
 
 ### Changed
