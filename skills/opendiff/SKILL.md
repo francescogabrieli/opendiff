@@ -200,7 +200,7 @@ Replace every placeholder with real data and write all narrative placeholders in
 Run the full flow from the target repository root:
 
 ```bash
-npx --yes opendiff@latest review --base HEAD --context 6
+npx --yes @francescogabrieli/opendiff@latest review --base HEAD --context 6
 ```
 
 This command validates the document, derives the real Git diff, builds the review data, starts the local renderer, and opens the browser.
@@ -208,7 +208,7 @@ This command validates the document, derives the real Git diff, builds the revie
 If the environment cannot open a browser, run:
 
 ```bash
-npx --yes opendiff@latest review --base HEAD --context 6 --no-open
+npx --yes @francescogabrieli/opendiff@latest review --base HEAD --context 6 --no-open
 ```
 
 Repair schema failures, duplicate IDs, unavailable Git bases, missing files, and resolvable line-reference warnings. Never silence a warning by inventing a line range.

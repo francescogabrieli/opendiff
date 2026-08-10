@@ -41,7 +41,7 @@ Usage:
   opendiff review [options]
 
 Recommended first run:
-  npx --yes opendiff@latest install
+  npx --yes @francescogabrieli/opendiff@latest install
 
 After installation, invoke @opendiff from Codex or Claude Code.
 

@@ -1,6 +1,6 @@
 {
-  "name": "opendiff",
-  "version": "0.1.5",
+  "name": "@francescogabrieli/opendiff",
+  "version": "0.1.6",
   "type": "module",
   "description": "Local, guided code reviews for changes made by coding agents.",
   "license": "MIT",
@@ -34,6 +34,7 @@
     "README.md",
     "SECURITY.md",
     "SUPPORT.md",
+    "bin/",
     "cli/",
     "dist/index.html",
     "dist/assets/",
@@ -46,7 +47,7 @@
     "access": "public"
   },
   "bin": {
-    "opendiff": "./cli/opendiff.mjs"
+    "opendiff": "bin/opendiff.js"
   },
   "scripts": {
     "dev": "vite",
