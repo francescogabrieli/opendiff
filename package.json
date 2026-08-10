@@ -67,16 +67,16 @@
   },
   "devDependencies": {
     "@tanstack/react-virtual": "^3.14.9",
-    "@vitejs/plugin-react": "^5.0.0",
-    "lucide-react": "^0.468.0",
+    "@vitejs/plugin-react": "^6.0.5",
+    "lucide-react": "^1.30.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "shiki": "^4.4.1",
+    "shiki": "^4.4.2",
     "@playwright/test": "^1.62.1",
     "@types/node": "^26.1.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.7.0",
-    "vite": "^7.0.0"
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1"
   }
 }
