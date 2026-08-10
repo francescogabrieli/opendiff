@@ -13,10 +13,10 @@ function git(root, ...args) {
 }
 
 function createRepository() {
-  const root = mkdtempSync(join(tmpdir(), "opendiffs-core-"));
+  const root = mkdtempSync(join(tmpdir(), "opendiff-core-"));
   git(root, "init", "-q");
-  git(root, "config", "user.email", "opendiffs-tests@example.com");
-  git(root, "config", "user.name", "OpenDiffs tests");
+  git(root, "config", "user.email", "opendiff-tests@example.com");
+  git(root, "config", "user.name", "OpenDiff tests");
   mkdirSync(join(root, "src"));
   writeFileSync(join(root, "src", "original.ts"), "export const value = 1;\n");
   git(root, "add", ".");
@@ -47,8 +47,8 @@ test("validates and renders a review document against the real diff", () => {
   const root = createRepository();
   writeFileSync(join(root, "src", "original.ts"), "export const value = 2;\n");
   const baseCommit = getBaseCommit(root, "HEAD");
-  mkdirSync(join(root, ".opendiffs"));
-  writeFileSync(join(root, ".opendiffs", "review.json"), JSON.stringify({
+  mkdirSync(join(root, ".opendiff"));
+  writeFileSync(join(root, ".opendiff", "review.json"), JSON.stringify({
     schemaVersion: "1.0",
     project: { name: "fixture", root: "." },
     review: { id: "fixture-review", title: "Update value", summary: "Updates one exported value.", originalTask: "Update the value.", generatedAt: "2026-01-01T00:00:00.000Z" },

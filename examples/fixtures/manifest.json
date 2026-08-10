@@ -1,5 +1,5 @@
 {
-  "description": "OpenDiffs fixture catalogue. The browser harness exposes the same cases through ?fixture=.",
+  "description": "OpenDiff fixture catalogue. The browser harness exposes the same cases through ?fixture=.",
   "fixtures": [
     { "id": "small", "kind": "focused one-file review", "route": "/?fixture=small" },
     { "id": "medium", "kind": "multi-file guided review", "route": "/?fixture=medium" },

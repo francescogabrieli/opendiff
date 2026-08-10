@@ -2,13 +2,13 @@
 
 ## Supported versions
 
-OpenDiffs is currently pre-1.0. Security fixes are applied to the latest release and to `main`; older pre-release versions are not maintained.
+OpenDiff is currently pre-1.0. Security fixes are applied to the latest release and to `main`; older pre-release versions are not maintained.
 
 ## Reporting a vulnerability
 
 Please do not open a public issue for a suspected vulnerability.
 
-Use GitHub's **Report a vulnerability** option in the repository Security tab. If private vulnerability reporting is not available, contact the repository owner privately through the contact information on their GitHub profile and include `OpenDiffs security` in the subject.
+Use GitHub's **Report a vulnerability** option in the repository Security tab. If private vulnerability reporting is not available, contact the repository owner privately through the contact information on their GitHub profile and include `OpenDiff security` in the subject.
 
 Include, when possible:
 
@@ -22,6 +22,6 @@ You should receive an acknowledgement within seven days. The maintainer will the
 
 ## Security boundaries
 
-OpenDiffs reads local Git data and agent-authored JSON, writes generated files under `.opendiffs/` and `public/data/`, and serves a browser UI on `127.0.0.1`. It does not intentionally upload repository content or include telemetry.
+OpenDiff reads local Git data and agent-authored JSON, writes generated files under `.opendiff/` and `public/data/`, and serves a browser UI on `127.0.0.1`. It does not intentionally upload repository content or include telemetry.
 
 Reports involving path traversal, unintended network exposure, arbitrary command execution, unsafe exported content, dependency compromise, or disclosure of repository data are in scope. Vulnerabilities in unsupported browsers or unmodified third-party dependencies should normally be reported upstream first.

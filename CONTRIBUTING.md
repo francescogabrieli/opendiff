@@ -1,6 +1,6 @@
-# Contributing to OpenDiffs
+# Contributing to OpenDiff
 
-Thank you for helping make agent-authored changes easier to review. OpenDiffs welcomes focused contributions that preserve its local-first, deterministic design.
+Thank you for helping make agent-authored changes easier to review. OpenDiff welcomes focused contributions that preserve its local-first, deterministic design.
 
 ## Before you start
 
@@ -18,8 +18,8 @@ Prerequisites:
 - Chrome or Chromium when running Playwright.
 
 ```bash
-git clone https://github.com/francescogabrieli/OpenDiffs.git
-cd OpenDiffs
+git clone https://github.com/francescogabrieli/OpenDiff.git
+cd OpenDiff
 npm ci
 npm run build
 npm test
@@ -61,7 +61,7 @@ npm run test:e2e
 npm run package:check
 ```
 
-Run the smallest relevant test while iterating, then the complete set before handoff. Do not commit generated `dist/`, `public/data/`, `test-results/`, `playwright-report/`, or `.opendiffs/` content.
+Run the smallest relevant test while iterating, then the complete set before handoff. Do not commit generated `dist/`, `public/data/`, `test-results/`, `playwright-report/`, or `.opendiff/` content.
 
 ### Unit and integration tests
 

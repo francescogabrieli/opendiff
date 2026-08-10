@@ -6,7 +6,7 @@ import fixtureReview from "../examples/small-review/review.json" with { type: "j
 
 test("the review schema documents the required guided-review fields", () => {
   const schema = JSON.parse(readFileSync(new URL("../schemas/review.schema.json", import.meta.url), "utf8"));
-  assert.equal(schema.$id, "https://opendiffs.local/schema/review-1.0.json");
+  assert.equal(schema.$id, "https://opendiff.local/schema/review-1.0.json");
   assert.deepEqual(schema.required, ["schemaVersion", "project", "review", "git", "stats", "sections", "tests", "risks", "assumptions", "completion"]);
   assert.ok(schema.$defs.section.required.includes("references"));
   assert.deepEqual(schema.$defs.risk.properties.severity.enum, ["low", "medium", "high"]);

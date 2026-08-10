@@ -1,4 +1,4 @@
-# OpenDiffs fixtures
+# OpenDiff fixtures
 
 The renderer keeps deterministic browser fixtures behind query parameters so the production path never silently substitutes demo data:
 

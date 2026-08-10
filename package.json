@@ -1,6 +1,6 @@
 {
-  "name": "opendiffs",
-  "version": "0.1.3",
+  "name": "opendiff",
+  "version": "0.1.4",
   "type": "module",
   "description": "Local, guided code reviews for changes made by coding agents.",
   "license": "MIT",
@@ -14,13 +14,13 @@
     "git",
     "local-first"
   ],
-  "homepage": "https://github.com/francescogabrieli/opendiffs#readme",
+  "homepage": "https://github.com/francescogabrieli/opendiff#readme",
   "bugs": {
-    "url": "https://github.com/francescogabrieli/opendiffs/issues"
+    "url": "https://github.com/francescogabrieli/opendiff/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/francescogabrieli/opendiffs.git"
+    "url": "git+https://github.com/francescogabrieli/opendiff.git"
   },
   "engines": {
     "node": ">=20.19.0"
@@ -45,7 +45,7 @@
     "access": "public"
   },
   "bin": {
-    "opendiffs": "./cli/opendiffs.mjs"
+    "opendiff": "./cli/opendiff.mjs"
   },
   "scripts": {
     "dev": "vite",
@@ -58,7 +58,7 @@
     "check": "npm test && npm run build",
     "package:check": "npm pack --dry-run",
     "prepack": "npm run check",
-    "opendiffs": "node ./cli/opendiffs.mjs"
+    "opendiff": "node ./cli/opendiff.mjs"
   },
   "dependencies": {
     "zod": "^4.4.3"

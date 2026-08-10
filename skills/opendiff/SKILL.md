@@ -1,13 +1,13 @@
 ---
-name: opendiffs
-description: Implement a code change and present the final working-tree diff as a local, Linear-style guided review. Use when the user invokes OpenDiffs, tags @opendiffs, asks for a guided review, or wants the change explained by intent instead of filename order.
+name: opendiff
+description: Implement a code change and present the final working-tree diff as a local, Linear-style guided review. Use when the user invokes OpenDiff, tags @opendiff, asks for a guided review, or wants the change explained by intent instead of filename order.
 ---
 
-# OpenDiffs
+# OpenDiff
 
 Implement the user's request, then produce and open a factual guided review of the exact final change.
 
-OpenDiffs is a deterministic local renderer. You, the same coding agent that implements the change, must author the explanation. Never delegate the narrative to a second model or agent.
+OpenDiff is a deterministic local renderer. You, the same coding agent that implements the change, must author the explanation. Never delegate the narrative to a second model or agent.
 
 ## Non-negotiable rules
 
@@ -95,9 +95,9 @@ Use the review fields deliberately:
 - `impact` records observable consequences, architectural effects, invariants, or maintenance implications;
 - `references` are evidence for the narrative, not a substitute for it.
 
-## 4. Write `.opendiffs/review.json`
+## 4. Write `.opendiff/review.json`
 
-Create `.opendiffs/` when necessary and write strict JSON matching schema version `1.0`:
+Create `.opendiff/` when necessary and write strict JSON matching schema version `1.0`:
 
 ```json
 {
@@ -200,7 +200,7 @@ Replace every placeholder with real data and write all narrative placeholders in
 Run the full flow from the target repository root:
 
 ```bash
-npx --yes opendiffs@latest review --base HEAD --context 6
+npx --yes opendiff@latest review --base HEAD --context 6
 ```
 
 This command validates the document, derives the real Git diff, builds the review data, starts the local renderer, and opens the browser.
@@ -208,7 +208,7 @@ This command validates the document, derives the real Git diff, builds the revie
 If the environment cannot open a browser, run:
 
 ```bash
-npx --yes opendiffs@latest review --base HEAD --context 6 --no-open
+npx --yes opendiff@latest review --base HEAD --context 6 --no-open
 ```
 
 Repair schema failures, duplicate IDs, unavailable Git bases, missing files, and resolvable line-reference warnings. Never silence a warning by inventing a line range.

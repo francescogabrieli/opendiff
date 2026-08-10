@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 
 const packageRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const skillSource = join(packageRoot, "skills", "opendiffs", "SKILL.md");
+const skillSource = join(packageRoot, "skills", "opendiff", "SKILL.md");
 
 const agents = {
   codex: {
@@ -28,22 +28,22 @@ const agents = {
 
 for (const agent of Object.values(agents)) {
   agent.skillsDirectory = join(agent.home, "skills");
-  agent.destination = join(agent.skillsDirectory, "opendiffs", "SKILL.md");
+  agent.destination = join(agent.skillsDirectory, "opendiff", "SKILL.md");
 }
 
 function printHelp() {
-  console.log(`OpenDiffs — guided reviews for coding agents
+  console.log(`OpenDiff — guided reviews for coding agents
 
 Usage:
-  opendiffs install [--agent codex|claude|all] [--force]
-  opendiffs uninstall [--agent codex|claude|all]
-  opendiffs doctor
-  opendiffs review [options]
+  opendiff install [--agent codex|claude|all] [--force]
+  opendiff uninstall [--agent codex|claude|all]
+  opendiff doctor
+  opendiff review [options]
 
 Recommended first run:
-  npx --yes opendiffs@latest install
+  npx --yes opendiff@latest install
 
-After installation, invoke @opendiffs from Codex or Claude Code.
+After installation, invoke @opendiff from Codex or Claude Code.
 
 Installer options:
   --agent NAME  Install for one agent, or all detected agents
@@ -51,7 +51,7 @@ Installer options:
   --help        Show this help
 
 The review, validate, render, open, and export commands are forwarded to the
-OpenDiffs runtime. `);
+OpenDiff runtime. `);
 }
 
 function parseInstallerOptions(argv) {
@@ -94,7 +94,7 @@ function selectedAgentKeys(selection) {
 
 function ensureSkillSource() {
   if (!existsSync(skillSource)) {
-    throw new Error(`The bundled OpenDiffs skill is missing at ${skillSource}.`);
+    throw new Error(`The bundled OpenDiff skill is missing at ${skillSource}.`);
   }
 }
 
@@ -108,7 +108,7 @@ function installSkill(argv) {
   const options = parseInstallerOptions(argv);
   const keys = selectedAgentKeys(options.agent);
 
-  console.log("OpenDiffs installer\n");
+  console.log("OpenDiff installer\n");
 
   if (!keys.length) {
     throw new Error(
@@ -128,11 +128,11 @@ function installSkill(argv) {
 
     mkdirSync(dirname(agent.destination), { recursive: true });
     copyFileSync(skillSource, agent.destination);
-    console.log(`✓ ${agent.label}: installed @opendiffs`);
+    console.log(`✓ ${agent.label}: installed @opendiff`);
     console.log(`  ${agent.destination}`);
   }
 
-  console.log("\nOpenDiffs is ready. Restart the coding agent if it was already open, then invoke @opendiffs from chat.");
+  console.log("\nOpenDiff is ready. Restart the coding agent if it was already open, then invoke @opendiff from chat.");
 }
 
 function uninstallSkill(argv) {
@@ -140,7 +140,7 @@ function uninstallSkill(argv) {
   const keys = selectedAgentKeys(options.agent === "auto" ? "all" : options.agent);
   let removed = 0;
 
-  console.log("OpenDiffs uninstaller\n");
+  console.log("OpenDiff uninstaller\n");
 
   for (const key of keys) {
     const agent = agents[key];
@@ -181,7 +181,7 @@ function doctor() {
     ["Claude Code skill installed", existsSync(agents.claude.destination)],
   ];
 
-  console.log("OpenDiffs doctor\n");
+  console.log("OpenDiff doctor\n");
   for (const [label, passed] of checks) {
     console.log(`${passed ? "✓" : "×"} ${label}`);
   }
@@ -199,6 +199,6 @@ try {
   else if (command === "help" || command === "--help" || command === "-h") printHelp();
   else await import("./index.mjs");
 } catch (error) {
-  console.error(`\nOpenDiffs: ${error instanceof Error ? error.message : String(error)}`);
+  console.error(`\nOpenDiff: ${error instanceof Error ? error.message : String(error)}`);
   process.exitCode = 1;
 }

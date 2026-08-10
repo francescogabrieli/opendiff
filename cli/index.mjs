@@ -19,7 +19,7 @@ const root = process.cwd();
 const packageRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const rendererRoot = join(packageRoot, "dist");
 const packageMetadata = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
-const agentDir = join(root, ".opendiffs");
+const agentDir = join(root, ".opendiff");
 const reviewPath = join(agentDir, "review.json");
 const renderDir = join(agentDir, "render");
 const publicDataDir = join(root, "public", "data");
@@ -27,14 +27,14 @@ const publicDataDir = join(root, "public", "data");
 const defaultConfig = gitDefaultConfig;
 
 function printHelp() {
-  console.log(`OpenDiffs — local guided reviews
+  console.log(`OpenDiff — local guided reviews
 
 Usage:
-  opendiffs <command> [options]
+  opendiff <command> [options]
 
 Commands:
-  init                  Create .opendiffs/config.json
-  skill install         Install the OpenDiffs skill for Codex
+  init                  Create .opendiff/config.json
+  skill install         Install the OpenDiff skill for Codex
   validate              Validate review.json and its diff references
   render                Materialize review and the real Git diff for the web app
   open                  Start the local renderer and print the URL
@@ -47,13 +47,13 @@ Options:
   --port PORT           Server port (default: 4173)
   --no-open             Do not open a browser
   --force               Replace an existing installed skill
-  --version             Print the installed OpenDiffs version
+  --version             Print the installed OpenDiff version
   --help                Show this help
 `);
 }
 
 function fail(message, code = 1) {
-  console.error(`\nOpenDiffs: ${message}`);
+  console.error(`\nOpenDiff: ${message}`);
   process.exitCode = code;
   return null;
 }
@@ -105,7 +105,7 @@ function getOptions(argv) {
     else if (arg === "--no-open") options.open = false;
     else if (arg === "--force") options.force = true;
     else if (arg === "install" && index === 0) continue;
-    else throw new Error(`Unknown option or argument “${arg}”. Run opendiffs --help.`);
+    else throw new Error(`Unknown option or argument “${arg}”. Run opendiff --help.`);
   }
   if (options.context !== null && (!Number.isInteger(options.context) || options.context < 1)) throw new Error("--context must be a positive integer.");
   if (!Number.isInteger(options.port) || options.port < 1 || options.port > 65535) throw new Error("--port must be an integer between 1 and 65535.");
@@ -150,15 +150,15 @@ function loadConfig() {
 function ensureGitignoreEntry() {
   const gitignorePath = join(root, ".gitignore");
   const current = existsSync(gitignorePath) ? readFileSync(gitignorePath, "utf8") : "";
-  if (current.split(/\r?\n/).some((line) => line.trim() === ".opendiffs/")) return false;
+  if (current.split(/\r?\n/).some((line) => line.trim() === ".opendiff/")) return false;
   const prefix = current && !current.endsWith("\n") ? "\n" : "";
-  appendFileSync(gitignorePath, `${prefix}# OpenDiffs generated review artifacts\n.opendiffs/\n`);
+  appendFileSync(gitignorePath, `${prefix}# OpenDiff generated review artifacts\n.opendiff/\n`);
   return true;
 }
 
 function validateReview({ reportOnly = false, options = {} } = {}) {
-  if (!getGitRoot()) return fail("OpenDiffs could not find a Git repository from the current directory. Run the command inside a repository.");
-  if (!existsSync(reviewPath)) return fail("No OpenDiffs review was found. Ask the coding agent to generate .opendiffs/review.json.");
+  if (!getGitRoot()) return fail("OpenDiff could not find a Git repository from the current directory. Run the command inside a repository.");
+  if (!existsSync(reviewPath)) return fail("No OpenDiff review was found. Ask the coding agent to generate .opendiff/review.json.");
 
   let rawDocument;
   try {
@@ -170,7 +170,7 @@ function validateReview({ reportOnly = false, options = {} } = {}) {
   const parsed = reviewDocumentSchema.safeParse(rawDocument);
   if (!parsed.success) {
     const errors = formatZodIssues(parsed.error.issues);
-    console.error("OpenDiffs review invalid: review.json does not match schema 1.0.");
+    console.error("OpenDiff review invalid: review.json does not match schema 1.0.");
     errors.forEach((error) => console.error(`  Error: ${error}`));
     if (!reportOnly) process.exitCode = 1;
     return { document: rawDocument, collected: { files: [], stats: {}, fingerprint: "", text: "" }, errors, warnings: [], unresolvedReferenceIds: [] };
@@ -225,7 +225,7 @@ function validateReview({ reportOnly = false, options = {} } = {}) {
   if (collected.files.length === 0) warnings.push("No code changes were found between the selected base and the working tree.");
   if (document.git.initialWorkingTree?.clean === false) warnings.push("The review was generated from an initially dirty working tree.");
   const label = errors.length ? "invalid" : warnings.length ? "valid with warnings" : "valid";
-  console.log(`OpenDiffs review ${label}: ${document.review.title}`);
+  console.log(`OpenDiff review ${label}: ${document.review.title}`);
   console.log(`  ${collected.files.length} diff files · ${document.sections.length} logical sections`);
   [...new Set(warnings)].forEach((warning) => console.log(`  Warning: ${warning}`));
   errors.forEach((error) => console.error(`  Error: ${error}`));
@@ -234,16 +234,16 @@ function validateReview({ reportOnly = false, options = {} } = {}) {
 }
 
 function init() {
-  if (!getGitRoot()) return fail("OpenDiffs could not find a Git repository from the current directory. Run the command inside a repository.");
+  if (!getGitRoot()) return fail("OpenDiff could not find a Git repository from the current directory. Run the command inside a repository.");
   mkdirSync(agentDir, { recursive: true });
   const configPath = join(agentDir, "config.json");
   const createdConfig = !existsSync(configPath);
   if (createdConfig) writeFileSync(configPath, `${JSON.stringify(defaultConfig, null, 2)}\n`);
   const addedGitignore = ensureGitignoreEntry();
   console.log(`${createdConfig ? "Created" : "Using existing"} ${relative(root, configPath)}`);
-  if (addedGitignore) console.log("Added .opendiffs/ to .gitignore");
-  console.log("Install the agent instruction with: opendiffs skill install");
-  console.log("Generate .opendiffs/review.json with the OpenDiffs skill, then run opendiffs review.");
+  if (addedGitignore) console.log("Added .opendiff/ to .gitignore");
+  console.log("Install the agent instruction with: opendiff skill install");
+  console.log("Generate .opendiff/review.json with the OpenDiff skill, then run opendiff review.");
 }
 
 function render(options) {
@@ -276,8 +276,8 @@ function render(options) {
 }
 
 function installSkill(options) {
-  const source = join(packageRoot, "skills", "opendiffs", "SKILL.md");
-  if (!existsSync(source)) return fail("The bundled OpenDiffs skill could not be found in this checkout.");
+  const source = join(packageRoot, "skills", "opendiff", "SKILL.md");
+  if (!existsSync(source)) return fail("The bundled OpenDiff skill could not be found in this checkout.");
   const candidates = [
     join(homedir(), ".codex", "skills"),
     join(homedir(), ".claude", "skills"),
@@ -285,7 +285,7 @@ function installSkill(options) {
   const existing = candidates.filter((directory) => existsSync(directory));
   const targets = existing.length ? existing : [candidates[0]];
   for (const skillsDirectory of targets) {
-    const destinationDirectory = join(skillsDirectory, "opendiffs");
+    const destinationDirectory = join(skillsDirectory, "opendiff");
     const destination = join(destinationDirectory, "SKILL.md");
     if (existsSync(destination) && !options.force) {
       console.log(`Skill already installed at ${destination} (use --force to replace it)`);
@@ -293,7 +293,7 @@ function installSkill(options) {
     }
     mkdirSync(destinationDirectory, { recursive: true });
     copyFileSync(source, destination);
-    console.log(`Installed OpenDiffs skill at ${destination}`);
+    console.log(`Installed OpenDiff skill at ${destination}`);
   }
 }
 
@@ -305,7 +305,7 @@ function openBrowser(url) {
 
 async function openServer(options) {
   if (!existsSync(join(rendererRoot, "index.html"))) {
-    return fail("The bundled renderer is missing. Run `npm run build` in the OpenDiffs checkout and try again.");
+    return fail("The bundled renderer is missing. Run `npm run build` in the OpenDiff checkout and try again.");
   }
   const preferredPort = Number(options.port) || 4173;
   const server = createHttpServer(createRequestHandler(root, rendererRoot));
@@ -328,15 +328,15 @@ async function openServer(options) {
   const address = server.address();
   const port = typeof address === "object" && address ? address.port : preferredPort;
   const url = `http://localhost:${port}`;
-  console.log(`OpenDiffs review starting at ${url}`);
+  console.log(`OpenDiff review starting at ${url}`);
   if (options.open && loadConfig().openBrowser !== false) setTimeout(() => openBrowser(url), 850);
 }
 
 function exportReview(options) {
   const result = validateReview({ reportOnly: true, options });
   if (!result || result.errors.length) return fail("The review cannot be exported until the blocking validation errors are fixed.");
-  const output = resolve(root, options.output || "opendiffs-export");
-  if (!existsSync(join(rendererRoot, "index.html"))) return fail("The bundled renderer is missing. Run `npm run build` in the OpenDiffs checkout and try again.");
+  const output = resolve(root, options.output || "opendiff-export");
+  if (!existsSync(join(rendererRoot, "index.html"))) return fail("The bundled renderer is missing. Run `npm run build` in the OpenDiff checkout and try again.");
   cpSync(rendererRoot, output, { recursive: true, force: true });
   mkdirSync(join(output, "data"), { recursive: true });
   const reviewDocument = { ...result.document, stats: { ...result.document.stats, ...result.collected.stats, sections: result.document.sections.length }, git: { ...result.document.git, fingerprint: result.collected.fingerprint } };
@@ -344,7 +344,7 @@ function exportReview(options) {
   writeFileSync(join(output, "data", "review.json"), `${JSON.stringify(reviewDocument, null, 2)}\n`);
   writeFileSync(join(output, "data", "diff.json"), `${JSON.stringify({ files, fingerprint: result.collected.fingerprint, baseRef: result.base, baseCommit: getBaseCommit(root, result.base), renderedAt: new Date().toISOString() }, null, 2)}\n`);
   writeFileSync(join(output, "data", "status.json"), `${JSON.stringify({ fingerprint: result.collected.fingerprint, baseRef: result.base, baseCommit: getBaseCommit(root, result.base) }, null, 2)}\n`);
-  writeFileSync(join(output, "README.txt"), "This folder contains a portable OpenDiffs review. Serve this directory with any local static file server.\n");
+  writeFileSync(join(output, "README.txt"), "This folder contains a portable OpenDiff review. Serve this directory with any local static file server.\n");
   console.log(`Exported review data to ${relative(root, output)}`);
 }
 
@@ -369,7 +369,7 @@ try {
       await openServer(options);
     }
   } else if (command === "export") exportReview(options);
-  else fail(`Unknown command “${command}”. Run opendiffs --help.`);
+  else fail(`Unknown command “${command}”. Run opendiff --help.`);
 } catch (error) {
   fail(error.message || String(error));
 }
