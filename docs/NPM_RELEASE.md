@@ -2,7 +2,7 @@
 
 This document separates repository preparation from the package-owner steps required for the first npm release.
 
-The first npm-published version is `0.1.3`. GitHub `v0.1.0`, `v0.1.1`, and `v0.1.2` were private prepublish validation releases; they remain immutable rather than being rewritten.
+The first npm-published version is `0.1.4`. GitHub `v0.1.0`, `v0.1.1`, `v0.1.2`, and `v0.1.3` were private prepublish validation releases; they remain immutable rather than being rewritten.
 
 ## Maintainer preparation
 
@@ -71,7 +71,7 @@ npm view opendiff version
 
 A `404 Not Found` means no published package currently owns that name. Availability is not reserved until the publish succeeds.
 
-Publish version `0.1.3`:
+Publish version `0.1.4`:
 
 ```bash
 npm publish
