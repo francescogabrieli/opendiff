@@ -90,7 +90,7 @@ jobs:
           )"
           test -f "$TARBALL"
           echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
-          npm exec --yes --package "./$TARBALL" -- opendiffs --help
+          npm exec --yes --package "./$TARBALL" -- opendiff --help
 
       - name: Test installation from the tarball
         if: steps.existing.outputs.exists != 'true'
@@ -101,9 +101,9 @@ jobs:
           TEST_HOME="$(mktemp -d)"
           CODEX_HOME="$TEST_HOME/codex" \
           CLAUDE_CONFIG_DIR="$TEST_HOME/claude" \
-          npm exec --yes --package "./$TARBALL" -- opendiffs install --agent all
-          test -f "$TEST_HOME/codex/skills/opendiffs/SKILL.md"
-          test -f "$TEST_HOME/claude/skills/opendiffs/SKILL.md"
+          npm exec --yes --package "./$TARBALL" -- opendiff install --agent all
+          test -f "$TEST_HOME/codex/skills/opendiff/SKILL.md"
+          test -f "$TEST_HOME/claude/skills/opendiff/SKILL.md"
           rm -rf "$TEST_HOME"
 
       - name: Extract release notes from the changelog
@@ -146,5 +146,5 @@ jobs:
         run: |
           gh release create "$TAG" "$TARBALL" \
             --target "$GITHUB_SHA" \
-            --title "OpenDiffs $TAG" \
+            --title "OpenDiff $TAG" \
             --notes-file release-notes.md
