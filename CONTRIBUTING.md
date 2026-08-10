@@ -18,8 +18,8 @@ Prerequisites:
 - Chrome or Chromium when running Playwright.
 
 ```bash
-git clone https://github.com/francescogabrieli/OpenDiff.git
-cd OpenDiff
+git clone https://github.com/francescogabrieli/opendiff.git
+cd opendiff
 npm ci
 npm run build
 npm test

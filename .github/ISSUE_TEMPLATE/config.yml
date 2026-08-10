@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security report
-    url: https://github.com/francescogabrieli/OpenDiff/security/advisories/new
+    url: https://github.com/francescogabrieli/opendiff/security/advisories/new
     about: Report vulnerabilities privately. Do not open a public issue.
   - name: Support guide
-    url: https://github.com/francescogabrieli/OpenDiff/blob/main/SUPPORT.md
+    url: https://github.com/francescogabrieli/opendiff/blob/main/SUPPORT.md
     about: Read the troubleshooting and support expectations before filing an issue.

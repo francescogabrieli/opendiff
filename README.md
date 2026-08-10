@@ -1,6 +1,6 @@
 # OpenDiff
 
-[![CI](https://github.com/francescogabrieli/OpenDiff/actions/workflows/ci.yml/badge.svg)](https://github.com/francescogabrieli/OpenDiff/actions/workflows/ci.yml)
+[![CI](https://github.com/francescogabrieli/opendiff/actions/workflows/ci.yml/badge.svg)](https://github.com/francescogabrieli/opendiff/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node.js 20.19+](https://img.shields.io/badge/node-%3E%3D20.19-339933.svg)](package.json)
 [![npm](https://img.shields.io/npm/v/opendiff.svg)](https://www.npmjs.com/package/opendiff)
@@ -215,8 +215,8 @@ Requirements:
 - Chrome or Chromium for end-to-end tests.
 
 ```bash
-git clone https://github.com/francescogabrieli/OpenDiff.git
-cd OpenDiff
+git clone https://github.com/francescogabrieli/opendiff.git
+cd opendiff
 npm ci
 npm run dev
 npm test
