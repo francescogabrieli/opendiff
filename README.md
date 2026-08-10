@@ -39,7 +39,7 @@ OpenDiff is installed once from npm as a package plus an agent skill. No reposit
 ### 1. Install the agent skill
 
 ```bash
-npx --yes opendiff@latest install
+npx --yes @francescogabrieli/opendiff@latest install
 ```
 
 The installer detects Codex and Claude Code and writes the bundled skill to the appropriate local skill directories:
@@ -52,9 +52,9 @@ The installer detects Codex and Claude Code and writes the bundled skill to the 
 When both agents are present, both are configured. To choose explicitly:
 
 ```bash
-npx --yes opendiff@latest install --agent codex
-npx --yes opendiff@latest install --agent claude
-npx --yes opendiff@latest install --agent all
+npx --yes @francescogabrieli/opendiff@latest install --agent codex
+npx --yes @francescogabrieli/opendiff@latest install --agent claude
+npx --yes @francescogabrieli/opendiff@latest install --agent all
 ```
 
 ### 2. Invoke the skill
@@ -74,9 +74,9 @@ The browser opens on `http://localhost:4173` with a Linear-style guided review: 
 ### Maintenance
 
 ```bash
-npx --yes opendiff@latest doctor
-npx --yes opendiff@latest install --force
-npx --yes opendiff@latest uninstall
+npx --yes @francescogabrieli/opendiff@latest doctor
+npx --yes @francescogabrieli/opendiff@latest install --force
+npx --yes @francescogabrieli/opendiff@latest uninstall
 ```
 
 `doctor` checks Node, Git, the bundled renderer, and the agent installation paths.
@@ -191,8 +191,8 @@ npm publish
 
 ```bash
 npm view opendiff version
-npx --yes opendiff@latest doctor
-npx --yes opendiff@latest install
+npx --yes @francescogabrieli/opendiff@latest doctor
+npx --yes @francescogabrieli/opendiff@latest install
 ```
 
 Then invoke `@opendiff` from a coding agent in a fresh repository to confirm the end-to-end flow.
