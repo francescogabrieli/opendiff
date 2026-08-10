@@ -1,11 +1,3 @@
-## 0.1.6
-
-### Changed
-
-- Publish OpenDiff under the npm scope `@francescogabrieli/opendiff` because npm rejects the unscoped `opendiff` name as too similar to an existing package.
-- Use a conventional `bin/opendiff.js` executable wrapper so npm preserves the `opendiff` command during publish normalization.
-- The canonical installer is now `npx --yes @francescogabrieli/opendiff@latest install`.
-
 # Changelog
 
 All notable changes to OpenDiff are documented here. The project follows [Semantic Versioning](https://semver.org/) for package releases and versions the review document contract separately through `schemaVersion`.
@@ -13,6 +5,14 @@ All notable changes to OpenDiff are documented here. The project follows [Semant
 ## [Unreleased]
 
 No unreleased changes yet.
+
+## [0.1.6] - 2026-08-10
+
+### Changed
+
+- Publish OpenDiff under the npm scope `@francescogabrieli/opendiff` because npm rejects the unscoped `opendiff` name as too similar to an existing package.
+- Use a conventional `bin/opendiff.js` executable wrapper so npm preserves the `opendiff` command during publish normalization.
+- The canonical installer is now `npx --yes @francescogabrieli/opendiff@latest install`.
 
 ## [0.1.5] - 2026-08-10
 
