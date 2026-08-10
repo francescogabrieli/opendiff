@@ -29,6 +29,9 @@ jobs:
         run: |
           set -euo pipefail
           while IFS= read -r -d '' path; do
+            case "$path" in
+              .github/workflows/*) continue ;;
+            esac
             new_path="${path//opendiffs/opendiff}"
             if [ "$path" != "$new_path" ]; then
               mkdir -p "$(dirname "$new_path")"
@@ -41,6 +44,9 @@ jobs:
         run: |
           set -euo pipefail
           while IFS= read -r -d '' file; do
+            case "$file" in
+              .github/workflows/*) continue ;;
+            esac
             perl -0pi -e 's/OpenDiffs/OpenDiff/g; s/OPENDIFFS/OPENDIFF/g; s/opendiffs/opendiff/g' "$file"
           done < <(git grep -Ilz -e 'OpenDiffs' -e 'OPENDIFFS' -e 'opendiffs' || true)
 
@@ -54,7 +60,7 @@ jobs:
           path = Path('CHANGELOG.md')
           text = path.read_text()
           marker = '## [0.1.3]'
-          entry = '''## [0.1.4] - 2026-08-10\n\n### Changed\n\n- Renamed the product from OpenDiff to OpenDiff across the repository, npm package, CLI, skill, generated review directory, documentation, schemas, tests, and release metadata.\n- The canonical public install command is now `npx --yes opendiff@latest install`, the agent skill is `@opendiff`, and generated review state lives under `.opendiff/`.\n\n'''
+          entry = '''## [0.1.4] - 2026-08-10\n\n### Changed\n\n- Renamed the product to OpenDiff across the repository, npm package, CLI, skill, generated review directory, documentation, schemas, tests, and release metadata.\n- The canonical public install command is now `npx --yes opendiff@latest install`, the agent skill is `@opendiff`, and generated review state lives under `.opendiff/`.\n\n'''
           if marker not in text:
               raise SystemExit('CHANGELOG marker not found')
           path.write_text(text.replace(marker, entry + marker, 1))
@@ -99,18 +105,17 @@ jobs:
           cmp "$CODEX_SKILL" "$CLAUDE_SKILL"
           grep -F 'npx --yes opendiff@latest review' "$CODEX_SKILL"
           grep -F '.opendiff/review.json' "$CODEX_SKILL"
-
           rm -rf "$TEST_HOME" "$TARBALL"
 
-      - name: Reject legacy plural naming
+      - name: Reject legacy plural naming outside workflows
         shell: bash
         run: |
           set -euo pipefail
-          if git grep -nEi 'opendiffs' -- . ':!package-lock.json'; then
+          if git grep -nEi 'opendiffs' -- . ':!package-lock.json' ':!.github/workflows/*'; then
             echo 'Legacy plural naming remains in tracked text.' >&2
             exit 1
           fi
-          if git ls-files | grep -Ei 'opendiffs'; then
+          if git ls-files | grep -Ei 'opendiffs' | grep -Ev '^\.github/workflows/'; then
             echo 'Legacy plural naming remains in a tracked path.' >&2
             exit 1
           fi
@@ -127,5 +132,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Rename OpenDiffs to OpenDiff"
+          git commit -m "Rename product to OpenDiff"
           git push origin HEAD:rename/opendiff
