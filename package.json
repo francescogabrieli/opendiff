@@ -1,6 +1,6 @@
 {
   "name": "opendiff",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "description": "Local, guided code reviews for changes made by coding agents.",
   "license": "MIT",
@@ -35,7 +35,8 @@
     "SECURITY.md",
     "SUPPORT.md",
     "cli/",
-    "dist/",
+    "dist/index.html",
+    "dist/assets/",
     "docs/",
     "examples/",
     "schemas/",

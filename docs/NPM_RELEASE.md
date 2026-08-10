@@ -35,7 +35,7 @@ Create and inspect the exact tarball:
 
 ```bash
 npm pack
-npm exec --yes --package ./opendiff-0.1.4.tgz -- opendiff --help
+npm exec --yes --package ./opendiff-0.1.5.tgz -- opendiff --help
 ```
 
 Test installation without touching the real agent configuration by using temporary homes:
@@ -44,7 +44,7 @@ Test installation without touching the real agent configuration by using tempora
 TEST_HOME="$(mktemp -d)"
 CODEX_HOME="$TEST_HOME/codex" \
 CLAUDE_CONFIG_DIR="$TEST_HOME/claude" \
-npx --yes ./opendiff-0.1.4.tgz install --agent all
+npx --yes ./opendiff-0.1.5.tgz install --agent all
 
 find "$TEST_HOME" -path '*/skills/opendiff/SKILL.md' -print
 rm -rf "$TEST_HOME"
@@ -71,7 +71,7 @@ npm view opendiff version
 
 A `404 Not Found` means no published package currently owns that name. Availability is not reserved until the publish succeeds.
 
-Publish version `0.1.4`:
+Publish version `0.1.5`:
 
 ```bash
 npm publish
@@ -83,8 +83,8 @@ Verify the registry and the real installation path:
 
 ```bash
 npm view opendiff version
-npx --yes opendiff@0.1.4 doctor
-npx --yes opendiff@0.1.4 install
+npx --yes opendiff@0.1.5 doctor
+npx --yes opendiff@0.1.5 install
 ```
 
 Restart Codex or Claude Code if it was already open, then invoke the installed OpenDiff skill from chat.
