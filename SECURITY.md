@@ -22,6 +22,6 @@ You should receive an acknowledgement within seven days. The maintainer will the
 
 ## Security boundaries
 
-OpenDiff reads local Git data and agent-authored JSON, writes generated files under `.opendiff/` and `public/data/`, and serves a browser UI on `127.0.0.1`. It does not intentionally upload repository content or include telemetry.
+OpenDiff reads local Git data and agent-authored JSON, writes generated files only under the self-ignored `.opendiff/` directory unless the user explicitly chooses an export destination, and serves a browser UI on `127.0.0.1`. It does not intentionally upload repository content or include telemetry.
 
 Reports involving path traversal, unintended network exposure, arbitrary command execution, unsafe exported content, dependency compromise, or disclosure of repository data are in scope. Vulnerabilities in unsupported browsers or unmodified third-party dependencies should normally be reported upstream first.

@@ -1,0 +1,81 @@
+name: Beta feedback
+description: Report a first-run OpenDiff beta experience without sharing source code.
+title: "[Beta]: "
+labels:
+  - beta-feedback
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing OpenDiff. Do not attach proprietary source, credentials, or a complete `.opendiff/review.json`.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Node.js version, and Codex or Claude Code.
+      placeholder: macOS 15, Node 22.14, Codex
+    validations:
+      required: true
+  - type: dropdown
+    id: installed_without_help
+    attributes:
+      label: Installation without help
+      options:
+        - "Yes"
+        - "No"
+    validations:
+      required: true
+  - type: input
+    id: time_to_review
+    attributes:
+      label: Time to first review
+      placeholder: 4 minutes
+    validations:
+      required: true
+  - type: dropdown
+    id: skill_recognized
+    attributes:
+      label: Was @opendiff recognized after restart?
+      options:
+        - "Yes"
+        - "No"
+        - "No restart was needed"
+    validations:
+      required: true
+  - type: textarea
+    id: friction
+    attributes:
+      label: Friction or sanitized errors
+      description: Describe every hesitation, warning, or failure. Remove repository content and secrets.
+    validations:
+      required: true
+  - type: textarea
+    id: git_status
+    attributes:
+      label: Git status after the review
+      description: Did OpenDiff introduce any unexpected path? Sanitize project-specific filenames if necessary.
+    validations:
+      required: true
+  - type: textarea
+    id: mental_model
+    attributes:
+      label: What did you think OpenDiff did?
+      description: Explain it in one sentence, in your own words.
+    validations:
+      required: true
+  - type: dropdown
+    id: use_again
+    attributes:
+      label: Would you use it again?
+      options:
+        - "Yes"
+        - "Maybe"
+        - "No"
+    validations:
+      required: true
+  - type: textarea
+    id: reason
+    attributes:
+      label: Why?
+    validations:
+      required: true

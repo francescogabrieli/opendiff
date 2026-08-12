@@ -61,7 +61,7 @@ npm run test:e2e
 npm run package:check
 ```
 
-Run the smallest relevant test while iterating, then the complete set before handoff. Do not commit generated `dist/`, `public/data/`, `test-results/`, `playwright-report/`, or `.opendiff/` content.
+Run the smallest relevant test while iterating, then the complete set before handoff. Do not commit generated `dist/`, `test-results/`, `playwright-report/`, or `.opendiff/` content.
 
 ### Unit and integration tests
 

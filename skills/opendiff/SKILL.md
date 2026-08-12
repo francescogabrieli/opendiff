@@ -97,6 +97,8 @@ Use the review fields deliberately:
 
 ## 4. Write `.opendiff/review.json`
 
+Create `.opendiff/.gitignore` containing `*` when it does not already exist. This keeps all local review material out of Git without modifying the repository's root `.gitignore`.
+
 Create `.opendiff/` when necessary and write strict JSON matching schema version `1.0`:
 
 ```json

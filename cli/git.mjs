@@ -94,8 +94,9 @@ function isBinaryPath(path) {
 }
 
 function addUntrackedFileDiff(root, path, context) {
+  const nullDevice = process.platform === "win32" ? "NUL" : "/dev/null";
   try {
-    return execFileSync("git", ["diff", "--no-index", "--no-ext-diff", `--unified=${context}`, "--", "/dev/null", path], {
+    return execFileSync("git", ["diff", "--no-index", "--no-ext-diff", `--unified=${context}`, "--", nullDevice, path], {
       cwd: root,
       encoding: "utf8",
       maxBuffer: 50 * 1024 * 1024,
@@ -114,25 +115,34 @@ export function collectDiff({ root, base = "HEAD", context = 5, includeStaged = 
   else if (includeUnstaged) tracked = runGit(root, ["diff", "--find-renames=50%", "--no-ext-diff", `--unified=${context}`, "--binary", "--"], { allowFailure: true, silent: true });
 
   let diffText = tracked;
+  const untrackedPaths = new Set();
   if (includeUntracked) {
     const untracked = runGit(root, ["ls-files", "--others", "--exclude-standard"], { allowFailure: true, silent: true })
       .split("\n").map((path) => path.trim()).filter(Boolean)
       .filter((path) => !path.startsWith(".opendiff/") && !path.startsWith("node_modules/") && !matchesAnyPath(path, ignoredPaths));
-    for (const path of untracked) diffText += `\n${addUntrackedFileDiff(root, path, context)}`;
+    for (const path of untracked) {
+      untrackedPaths.add(path);
+      diffText += `\n${addUntrackedFileDiff(root, path, context)}`;
+    }
   }
 
   const files = parseDiff(diffText)
     .filter((file) => !matchesAnyPath(file.path, ignoredPaths))
-    .map((file) => ({
-      ...file,
-      language: fileLanguage(file.path),
-      lockfile: isLockfile(file.path),
-      generated: matchesAnyPath(file.path, generatedPaths),
-      binary: file.status === "binary" || isBinaryPath(file.path),
-      previousPath: file.previousPath,
-      oldSize: file.status === "added" ? undefined : file.previousPath ? gitFileSize(root, base, file.previousPath) : gitFileSize(root, base, file.path),
-      newSize: file.status === "deleted" ? undefined : workingFileSize(root, file.path),
-    }));
+    .map((file) => {
+      const status = untrackedPaths.has(file.path) ? "added" : file.status;
+      const previousPath = status === "added" ? undefined : file.previousPath;
+      return {
+        ...file,
+        status,
+        language: fileLanguage(file.path),
+        lockfile: isLockfile(file.path),
+        generated: matchesAnyPath(file.path, generatedPaths),
+        binary: file.status === "binary" || isBinaryPath(file.path),
+        previousPath,
+        oldSize: status === "added" ? undefined : previousPath ? gitFileSize(root, base, previousPath) : gitFileSize(root, base, file.path),
+        newSize: status === "deleted" ? undefined : workingFileSize(root, file.path),
+      };
+    });
   return {
     text: diffText,
     files,

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, copyFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,7 +22,6 @@ const packageMetadata = JSON.parse(readFileSync(join(packageRoot, "package.json"
 const agentDir = join(root, ".opendiff");
 const reviewPath = join(agentDir, "review.json");
 const renderDir = join(agentDir, "render");
-const publicDataDir = join(root, "public", "data");
 
 const defaultConfig = gitDefaultConfig;
 
@@ -147,18 +146,18 @@ function loadConfig() {
   return loadGitConfig(root);
 }
 
-function ensureGitignoreEntry() {
-  const gitignorePath = join(root, ".gitignore");
-  const current = existsSync(gitignorePath) ? readFileSync(gitignorePath, "utf8") : "";
-  if (current.split(/\r?\n/).some((line) => line.trim() === ".opendiff/")) return false;
-  const prefix = current && !current.endsWith("\n") ? "\n" : "";
-  appendFileSync(gitignorePath, `${prefix}# OpenDiff generated review artifacts\n.opendiff/\n`);
+function ensureAgentArtifactsIgnored() {
+  const ignorePath = join(agentDir, ".gitignore");
+  mkdirSync(agentDir, { recursive: true });
+  if (existsSync(ignorePath)) return false;
+  writeFileSync(ignorePath, "*\n");
   return true;
 }
 
 function validateReview({ reportOnly = false, options = {} } = {}) {
   if (!getGitRoot()) return fail("OpenDiff could not find a Git repository from the current directory. Run the command inside a repository.");
   if (!existsSync(reviewPath)) return fail("No OpenDiff review was found. Ask the coding agent to generate .opendiff/review.json.");
+  ensureAgentArtifactsIgnored();
 
   let rawDocument;
   try {
@@ -235,22 +234,20 @@ function validateReview({ reportOnly = false, options = {} } = {}) {
 
 function init() {
   if (!getGitRoot()) return fail("OpenDiff could not find a Git repository from the current directory. Run the command inside a repository.");
-  mkdirSync(agentDir, { recursive: true });
+  const ignoredArtifacts = ensureAgentArtifactsIgnored();
   const configPath = join(agentDir, "config.json");
   const createdConfig = !existsSync(configPath);
   if (createdConfig) writeFileSync(configPath, `${JSON.stringify(defaultConfig, null, 2)}\n`);
-  const addedGitignore = ensureGitignoreEntry();
   console.log(`${createdConfig ? "Created" : "Using existing"} ${relative(root, configPath)}`);
-  if (addedGitignore) console.log("Added .opendiff/ to .gitignore");
+  if (ignoredArtifacts) console.log("Configured .opendiff/ artifacts to remain local and untracked");
   console.log("Install the agent instruction with: opendiff skill install");
-  console.log("Generate .opendiff/review.json with the OpenDiff skill, then run opendiff review.");
+  console.log("Generate .opendiff/review.json with the OpenDiff skill, then run npx --yes @francescogabrieli/opendiff@latest review.");
 }
 
 function render(options) {
   const result = validateReview({ reportOnly: true, options });
   if (!result || result.errors.length) return fail("The review cannot be rendered until the blocking validation errors are fixed.");
   mkdirSync(renderDir, { recursive: true });
-  mkdirSync(publicDataDir, { recursive: true });
   const reviewDocument = {
     ...result.document,
     stats: { ...result.document.stats, ...result.collected.stats, sections: result.document.sections.length },
@@ -269,9 +266,6 @@ function render(options) {
   const renderedFiles = attachReviewReferences(reviewDocument, result.collected.files);
   writeFileSync(join(renderDir, "diff.json"), `${JSON.stringify({ ...metadata, files: renderedFiles }, null, 2)}\n`);
   writeFileSync(join(renderDir, "status.json"), `${JSON.stringify({ fingerprint: metadata.fingerprint, renderedAt: metadata.renderedAt, baseRef: metadata.baseRef, baseCommit: metadata.baseCommit }, null, 2)}\n`);
-  writeFileSync(join(publicDataDir, "review.json"), `${JSON.stringify(reviewDocument, null, 2)}\n`);
-  writeFileSync(join(publicDataDir, "diff.json"), `${JSON.stringify({ ...metadata, files: renderedFiles }, null, 2)}\n`);
-  writeFileSync(join(publicDataDir, "status.json"), `${JSON.stringify({ fingerprint: metadata.fingerprint, renderedAt: metadata.renderedAt, baseRef: metadata.baseRef, baseCommit: metadata.baseCommit }, null, 2)}\n`);
   console.log(`Rendered ${result.collected.files.length} files to ${relative(root, renderDir)}`);
 }
 

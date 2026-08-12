@@ -19,8 +19,9 @@ OpenDiff is:
 target repository                         installed OpenDiff package
 ┌──────────────────────────────┐          ┌────────────────────────────┐
 │ .git/                        │          │ cli/                       │
-│ .opendiff/review.json     │─────────▶│ validation + Git adapter   │
-│ .opendiff/config.json     │          │ local HTTP server          │
+│ .opendiff/review.json        │─────────▶│ validation + Git adapter   │
+│ .opendiff/config.json        │          │ local HTTP server          │
+│ .opendiff/render/*.json      │          │                            │
 └──────────────────────────────┘          ├────────────────────────────┤
                                           │ dist/                      │
                                           │ bundled React renderer     │
@@ -48,7 +49,7 @@ The Zod schema is the runtime validator. The JSON Schema is the public editor/to
 
 ### CLI orchestration — `cli/index.mjs`
 
-Owns initialization, skill installation, validation, materialization, export, browser launch, and process-level error reporting. It may write generated data, but it must not stage, commit, reset, or rewrite source files in the target repository.
+Owns initialization, skill installation, validation, materialization, export, browser launch, and process-level error reporting. Transient materialization stays under `.opendiff/`; the CLI must not write generated data into application directories, or stage, commit, reset, or rewrite source files in the target repository.
 
 ### Local data server — `cli/server.mjs`
 
@@ -78,7 +79,7 @@ The renderer may enrich or normalize data for display, but must not overwrite th
 
 ## Generated data
 
-`.opendiff/`, `public/data/`, `dist/`, Playwright reports, and test results are generated and ignored. `render` materializes local data for inspection; `export` copies the bundled production renderer and current review data into a standalone folder.
+`.opendiff/`, `dist/`, Playwright reports, and test results are generated and ignored. `.opendiff/.gitignore` keeps the complete local review directory out of Git without changing the repository's root `.gitignore`. `render` materializes local data only under `.opendiff/render/`; `export` copies the bundled production renderer and current review data into an explicit standalone output folder.
 
 ## Extension rules
 

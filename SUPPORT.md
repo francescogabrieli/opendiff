@@ -5,8 +5,8 @@
 Before opening an issue:
 
 1. confirm Node.js satisfies the version in `package.json`;
-2. run `opendiff --help`;
-3. run `opendiff validate` from the target Git repository root;
+2. run `npx --yes @francescogabrieli/opendiff@latest --help`;
+3. run `npx --yes @francescogabrieli/opendiff@latest validate` from the target Git repository root;
 4. search existing issues;
 5. retry with the latest OpenDiff release or `main`.
 

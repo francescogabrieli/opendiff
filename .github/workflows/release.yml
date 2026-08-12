@@ -1,64 +1,84 @@
-name: GitHub Release
+name: Publish release
 
 on:
   push:
-    branches: [main]
+    tags:
+      - "v*"
 
 permissions:
   contents: write
+  id-token: write
 
 concurrency:
-  group: github-release-${{ github.ref }}
+  group: publish-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   release:
-    name: Validate and release package version
+    name: Validate, publish, and create release
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
-      - name: Check out repository
+      - name: Check out tagged source
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: Set up Node.js
+      - name: Set up Node.js for Trusted Publishing
         uses: actions/setup-node@v7
         with:
-          node-version: 22
-          cache: npm
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
-      - name: Resolve package version
+      - name: Use a Trusted Publishing-compatible npm CLI
+        run: npm install --global npm@11
+
+      - name: Validate tag, package version, and changelog
         id: version
         shell: bash
         run: |
           VERSION="$(node --print "require('./package.json').version")"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          PACKAGE="$(node --print "require('./package.json').name")"
+          TAG="${GITHUB_REF_NAME}"
+          test "$TAG" = "v$VERSION"
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          VERSION="$VERSION" node --input-type=module <<'NODE'
+          import fs from 'node:fs';
 
-      - name: Check for an existing release
-        id: existing
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.version.outputs.tag }}
-        shell: bash
-        run: |
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
+          const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+          const version = process.env.VERSION;
+          const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const match = new RegExp(`^## \\[${escaped}\\](?: - .+)?$`, 'm').exec(changelog);
+          if (!match) throw new Error(`CHANGELOG.md has no section for ${version}`);
+
+          const remainder = changelog.slice(match.index + match[0].length);
+          const nextHeader = remainder.search(/^## /m);
+          const notes = (nextHeader === -1 ? remainder : remainder.slice(0, nextHeader)).trim();
+          if (!notes) throw new Error(`CHANGELOG.md section for ${version} is empty`);
+          fs.writeFileSync('release-notes.md', `${notes}\n`);
+          NODE
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Install dependencies
-        if: steps.existing.outputs.exists != 'true'
         run: npm ci
 
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev
+
       - name: Run checks
-        if: steps.existing.outputs.exists != 'true'
         run: npm run check
 
-      - name: Build and inspect the real tarball
-        if: steps.existing.outputs.exists != 'true'
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser tests
+        run: npm run test:e2e
+
+      - name: Build and inspect the exact tarball
         id: package
         shell: bash
         run: |
@@ -68,7 +88,6 @@ jobs:
 
           const output = fs.readFileSync('npm-pack.log', 'utf8');
           let result = null;
-
           for (let index = output.indexOf('['); index !== -1; index = output.indexOf('[', index + 1)) {
             try {
               const candidate = JSON.parse(output.slice(index));
@@ -80,11 +99,7 @@ jobs:
               // Prepack logs can precede npm's final JSON payload.
             }
           }
-
-          if (!result) {
-            throw new Error('Could not locate npm pack JSON output');
-          }
-
+          if (!result) throw new Error('Could not locate npm pack JSON output');
           process.stdout.write(result[0].filename);
           NODE
           )"
@@ -92,59 +107,72 @@ jobs:
           echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
           npm exec --yes --package "./$TARBALL" -- opendiff --help
 
-      - name: Test installation from the tarball
-        if: steps.existing.outputs.exists != 'true'
+      - name: Test isolated skill installation
         env:
           TARBALL: ${{ steps.package.outputs.tarball }}
         shell: bash
         run: |
-          TEST_HOME="$(mktemp -d)"
-          CODEX_HOME="$TEST_HOME/codex" \
-          CLAUDE_CONFIG_DIR="$TEST_HOME/claude" \
+          TEST_ROOT="$(mktemp -d)"
+          CODEX_HOME="$TEST_ROOT/codex" \
+          CLAUDE_CONFIG_DIR="$TEST_ROOT/claude" \
           npm exec --yes --package "./$TARBALL" -- opendiff install --agent all
-          test -f "$TEST_HOME/codex/skills/opendiff/SKILL.md"
-          test -f "$TEST_HOME/claude/skills/opendiff/SKILL.md"
-          rm -rf "$TEST_HOME"
+          test -f "$TEST_ROOT/codex/skills/opendiff/SKILL.md"
+          test -f "$TEST_ROOT/claude/skills/opendiff/SKILL.md"
 
-      - name: Extract release notes from the changelog
-        if: steps.existing.outputs.exists != 'true'
+      - name: Check registry state
+        id: registry
         env:
+          PACKAGE: ${{ steps.version.outputs.package }}
           VERSION: ${{ steps.version.outputs.version }}
         shell: bash
         run: |
+          if npm view "$PACKAGE@$VERSION" version >/dev/null 2>&1; then
+            PUBLISHED_GIT_HEAD="$(npm view "$PACKAGE@$VERSION" gitHead)"
+            test "$PUBLISHED_GIT_HEAD" = "$GITHUB_SHA"
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to npm with OIDC provenance
+        if: steps.registry.outputs.published != 'true'
+        env:
+          TARBALL: ${{ steps.package.outputs.tarball }}
+        run: npm publish "./$TARBALL" --access public
+
+      - name: Verify registry version and provenance
+        env:
+          PACKAGE: ${{ steps.version.outputs.package }}
+          VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          test "$(npm view "$PACKAGE@$VERSION" version)" = "$VERSION"
+          npm view "$PACKAGE@$VERSION" dist.attestations --json > npm-attestations.json
+          test -s npm-attestations.json
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
 
-          const version = process.env.VERSION;
-          const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
-          const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const header = new RegExp(`^## \\[${escaped}\\].*$`, 'm');
-          const match = header.exec(changelog);
-
-          if (!match) {
-            throw new Error(`CHANGELOG.md has no section for ${version}`);
+          const attestations = JSON.parse(fs.readFileSync('npm-attestations.json', 'utf8'));
+          if (!attestations || typeof attestations !== 'object') {
+            throw new Error('npm did not return provenance attestations');
           }
-
-          const remainder = changelog.slice(match.index + match[0].length);
-          const nextHeader = remainder.search(/^## /m);
-          const notes = (nextHeader === -1 ? remainder : remainder.slice(0, nextHeader)).trim();
-
-          if (!notes) {
-            throw new Error(`CHANGELOG.md section for ${version} is empty`);
-          }
-
-          fs.writeFileSync('release-notes.md', `${notes}\n`);
           NODE
 
-      - name: Create GitHub release
-        if: steps.existing.outputs.exists != 'true'
+      - name: Create or repair the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
           TARBALL: ${{ steps.package.outputs.tarball }}
         shell: bash
         run: |
-          gh release create "$TAG" "$TARBALL" \
-            --target "$GITHUB_SHA" \
-            --title "OpenDiff $TAG" \
-            --notes-file release-notes.md
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" \
+              --title "OpenDiff $TAG" \
+              --notes-file release-notes.md
+            gh release upload "$TAG" "$TARBALL" --clobber
+          else
+            gh release create "$TAG" "$TARBALL" \
+              --verify-tag \
+              --title "OpenDiff $TAG" \
+              --notes-file release-notes.md
+          fi
