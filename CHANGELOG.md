@@ -6,6 +6,20 @@ All notable changes to OpenDiff are documented here. The project follows [Semant
 
 No unreleased changes yet.
 
+## [0.1.7] - 2026-08-12
+
+### Fixed
+
+- Keep all transient review material under `.opendiff/` so `render` never creates `public/data/` inside the repository being reviewed.
+- Make `.opendiff/` self-ignoring without editing the repository's root `.gitignore`, and cover the clean-working-tree invariant with regression tests.
+- Use the Windows null device when deriving diffs for untracked files and normalize filesystem URLs in cross-platform tests.
+- Replace stale unscoped npm links, badges, commands, and release instructions with the canonical `@francescogabrieli/opendiff` package.
+
+### Changed
+
+- Validate the CLI on Ubuntu, macOS, and Windows in CI.
+- Publish version tags through npm Trusted Publishing with OIDC provenance before creating the matching GitHub release.
+
 ## [0.1.6] - 2026-08-10
 
 ### Changed

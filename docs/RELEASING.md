@@ -1,12 +1,12 @@
 # Releasing
 
-This checklist is for maintainers preparing a public OpenDiff release.
+This checklist prepares a public OpenDiff release for the tag-driven npm and GitHub workflow.
 
 ## Before tagging
 
 1. Confirm `main` is green and the working tree is clean.
-2. Update `CHANGELOG.md` and remove the `Unreleased` placeholder for shipped changes.
-3. Update the version in `package.json` and `package-lock.json` using semantic versioning.
+2. Update `CHANGELOG.md`, `package.json`, and `package-lock.json` to the same semantic version.
+3. Confirm npm Trusted Publishing targets `francescogabrieli/opendiff` and `release.yml` as documented in [NPM_RELEASE.md](NPM_RELEASE.md).
 4. Run:
 
    ```bash
@@ -18,11 +18,26 @@ This checklist is for maintainers preparing a public OpenDiff release.
    npm run package:check
    ```
 
-5. Inspect the tarball listing. It must include `cli/`, `dist/`, `schemas/`, `skills/`, documentation media, `README.md`, and `LICENSE`, and must exclude local review data and test artifacts.
-6. Install the packed tarball into a temporary directory and smoke-test `opendiff --help`, `skill install`, and a small review against a temporary Git repository.
+5. Inspect the tarball listing. It must include `cli/`, `dist/`, `schemas/`, `skills/`, documentation media, `README.md`, and `LICENSE`; it must exclude `.opendiff/`, `public/data/`, test artifacts, and repository source files not listed in `package.json#files`.
+6. Smoke-test the exact tarball with `opendiff --help`, an isolated skill installation, and `render` in a temporary Git repository.
+7. Confirm the smoke repository contains only the intentional source change after rendering.
 
 ## Publish
 
-Create an annotated `vX.Y.Z` tag and a GitHub release from the changelog entry. Publish through npm trusted publishing with provenance when configured; do not store long-lived npm tokens in the repository.
+Create and push an annotated `vX.Y.Z` tag. Do not run `npm publish` locally.
 
-After publication, install from the registry in a clean environment and repeat the CLI smoke test. If a severe regression is discovered, deprecate the affected version before considering unpublish.
+```bash
+git tag -a vX.Y.Z -m "OpenDiff vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+The release workflow requires the tagged commit to belong to `main`, validates the release, publishes with OIDC provenance, and creates the GitHub release. It is safe to rerun after npm publication only when the registry version's `gitHead` matches the tagged commit.
+
+## After publication
+
+1. Confirm the npm version and provenance attestation.
+2. Run `--help`, `doctor`, skill installation, and one complete review from the registry package.
+3. Confirm the GitHub release contains the tarball built by the same workflow.
+4. Start the five-user protocol in [BETA_TESTING.md](BETA_TESTING.md) before broad promotion.
+
+If a severe regression is discovered, deprecate the affected version and ship a patch. Do not reuse, rewrite, or silently replace a published version.

@@ -3,13 +3,13 @@
 [![CI](https://github.com/francescogabrieli/opendiff/actions/workflows/ci.yml/badge.svg)](https://github.com/francescogabrieli/opendiff/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node.js 20.19+](https://img.shields.io/badge/node-%3E%3D20.19-339933.svg)](package.json)
-[![npm](https://img.shields.io/npm/v/opendiff.svg)](https://www.npmjs.com/package/opendiff)
+[![npm](https://img.shields.io/npm/v/%40francescogabrieli%2Fopendiff.svg)](https://www.npmjs.com/package/@francescogabrieli/opendiff)
 
 OpenDiff turns a coding agent's working-tree changes into a local, guided code review. The same agent that implements the work explains it; OpenDiff validates those explanations against the real Git diff and presents the review by intent instead of filename.
 
 ![OpenDiff guided review](docs/opendiff-demo.gif)
 
-OpenDiff is **local-first** and **deterministic**. It does not upload source code, call an additional model, create a pull request, or modify the repository being reviewed. Everything runs on your machine, against your own Git history.
+OpenDiff is **local-first** and **deterministic**. It does not upload source code, call an additional model, create a pull request, or modify source files or Git state in the repository being reviewed. Local review artifacts remain ignored under `.opendiff/`.
 
 ## Why OpenDiff?
 
@@ -94,7 +94,7 @@ coding agent captures the Git baseline
    └── writes .opendiff/review.json
    │
    ▼
-npx opendiff review
+npx --yes @francescogabrieli/opendiff@latest review
    │
    ├── validates the authored references
    ├── derives the real staged, unstaged, and untracked Git diff
@@ -133,7 +133,7 @@ schemas/   the machine-readable review schema
 docs/      format and architecture documentation
 ```
 
-The `prepack` script runs tests and creates the production renderer before npm assembles the package. The interface opened by `npx opendiff review` is therefore built from the same frontend source as the repository.
+The `prepack` script runs tests and creates the production renderer before npm assembles the package. The interface opened by `npx --yes @francescogabrieli/opendiff@latest review` is therefore built from the same frontend source as the repository.
 
 ## Review format
 
@@ -155,7 +155,7 @@ See the [review format guide](docs/REVIEW_FORMAT.md), the machine-readable [JSON
 
 ## Publishing to npm
 
-OpenDiff is published to the npm registry as the `opendiff` package. Releases follow [Semantic Versioning](https://semver.org/); the review document contract is versioned separately through `schemaVersion`.
+OpenDiff is published to the npm registry as `@francescogabrieli/opendiff`. Releases follow [Semantic Versioning](https://semver.org/); the review document contract is versioned separately through `schemaVersion`.
 
 ### Before you publish
 
@@ -172,25 +172,17 @@ npm run package:check
 
 ### Publish
 
-Authenticate once, then publish:
+Push an annotated tag matching the package version. The release workflow validates the tag, runs the complete suite, smoke-tests the tarball, publishes through npm Trusted Publishing with OIDC provenance, and creates the matching GitHub release.
 
 ```bash
-npm login
-npm whoami
-npm publish
-```
-
-For a new release, bump the version and publish in one step:
-
-```bash
-npm version patch   # or minor / major
-npm publish
+git tag -a vX.Y.Z -m "OpenDiff vX.Y.Z"
+git push origin vX.Y.Z
 ```
 
 ### Verify the release
 
 ```bash
-npm view opendiff version
+npm view @francescogabrieli/opendiff version
 npx --yes @francescogabrieli/opendiff@latest doctor
 npx --yes @francescogabrieli/opendiff@latest install
 ```
@@ -199,11 +191,11 @@ Then invoke `@opendiff` from a coding agent in a fresh repository to confirm the
 
 ### Notes
 
-- `npm publish` runs the `prepack` script (tests + production build) automatically before assembling the tarball.
-- The package is published with `"access": "public"`; no scoped name or special flag is needed.
-- Future releases can use [npm Trusted Publishing](https://docs.npmjs.com/generating-provenance-statements) from GitHub Actions without storing a long-lived npm token.
+- The tag must equal `v` plus the exact `package.json` version and the changelog must contain that version.
+- The package is public through `publishConfig.access`; the workflow still passes `--access public` explicitly.
+- npm authentication uses a workflow-specific OIDC identity. No long-lived publish token belongs in GitHub secrets.
 
-See [docs/RELEASING.md](docs/RELEASING.md) and [docs/NPM_RELEASE.md](docs/NPM_RELEASE.md) for the full release checklist and first-publish procedure.
+See [docs/RELEASING.md](docs/RELEASING.md) and [docs/NPM_RELEASE.md](docs/NPM_RELEASE.md) for the full release and Trusted Publisher setup.
 
 ## Development
 
@@ -228,7 +220,7 @@ Use `npm run check` for the fast CI-equivalent checks. Browser fixtures are docu
 
 ## Project status
 
-OpenDiff is pre-1.0. The review schema is versioned independently and currently at `1.0`; CLI and UI behavior may evolve between minor releases. Compatibility-impacting changes must be documented in [CHANGELOG.md](CHANGELOG.md).
+OpenDiff is pre-1.0. The review schema is versioned independently and currently at `1.0`; CLI and UI behavior may evolve between minor releases. Compatibility-impacting changes must be documented in [CHANGELOG.md](CHANGELOG.md). Early adopters can follow the five-user [beta testing protocol](docs/BETA_TESTING.md).
 
 ## Security and privacy
 

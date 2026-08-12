@@ -22,7 +22,6 @@ export function createHandler(root) {
   const agentDir = join(root, ".opendiff");
   const reviewPath = join(agentDir, "review.json");
   const renderStatusPath = join(agentDir, "render", "status.json");
-  const publicStatusPath = join(root, "public", "data", "status.json");
 
   return (req, res, next) => {
     const requestUrl = new URL(req.url || "/", "http://localhost");
@@ -78,7 +77,7 @@ export function createHandler(root) {
       return;
     }
     if (requestUrl.pathname === "/__opendiff/status") {
-      const renderedStatus = readDocument(renderStatusPath) || readDocument(publicStatusPath) || {};
+      const renderedStatus = readDocument(renderStatusPath) || {};
       const review = readDocument(reviewPath);
       if (!review) {
         json(res, 404, { code: "missing-review", message: "No OpenDiff review was found." });

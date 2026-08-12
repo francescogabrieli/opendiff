@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
-const repositoryRoot = resolve(new URL("..", import.meta.url).pathname);
+const repositoryRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const cli = join(repositoryRoot, "cli", "opendiff.mjs");
 
 function run(args, env) {
@@ -44,6 +45,7 @@ test("installs and removes the OpenDiff skill for Codex and Claude Code", () => 
     assert.match(installedSkill, /same natural language as the user's original task/);
     assert.match(installedSkill, /technically competent reader who is new to the repository/);
     assert.match(installedSkill, /references` are evidence for the narrative, not a substitute for it/);
+    assert.match(installedSkill, /\.opendiff\/\.gitignore/);
     assert.equal(installedSkill, readFileSync(claudeSkill, "utf8"));
 
     const repeated = run(["install", "--agent", "all"], env);

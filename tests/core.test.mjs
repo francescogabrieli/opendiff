@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { collectDiff, getBaseCommit, getWorkingTree } from "../cli/git.mjs";
 
 const cliPath = new URL("../cli/index.mjs", import.meta.url);
+const cliFilePath = fileURLToPath(cliPath);
 
 function git(root, ...args) {
   return execFileSync("git", args, { cwd: root, encoding: "utf8" });
@@ -61,20 +63,32 @@ test("validates and renders a review document against the real diff", () => {
     completion: { status: "complete", summary: "The fixture change is complete.", remainingWork: [] },
   }, null, 2));
 
-  execFileSync(process.execPath, [cliPath.pathname, "validate"], { cwd: root, encoding: "utf8" });
-  execFileSync(process.execPath, [cliPath.pathname, "render"], { cwd: root, encoding: "utf8" });
-  const renderedReview = JSON.parse(readFileSync(join(root, "public", "data", "review.json"), "utf8"));
-  const renderedDiff = JSON.parse(readFileSync(join(root, "public", "data", "diff.json"), "utf8"));
+  execFileSync(process.execPath, [cliFilePath, "validate"], { cwd: root, encoding: "utf8" });
+  execFileSync(process.execPath, [cliFilePath, "render"], { cwd: root, encoding: "utf8" });
+  const renderedReview = JSON.parse(readFileSync(join(root, ".opendiff", "render", "review.json"), "utf8"));
+  const renderedDiff = JSON.parse(readFileSync(join(root, ".opendiff", "render", "diff.json"), "utf8"));
   assert.equal(renderedReview.git.fingerprint.length, 64);
   assert.equal(renderedDiff.files.length, 1);
   assert.equal(renderedDiff.files[0].lines.some((line) => line.referenceIds?.includes("value-ref")), true);
+  assert.equal(existsSync(join(root, "public", "data")), false);
+  assert.deepEqual(getWorkingTree(root).files, ["src/original.ts"]);
+});
+
+test("initializes local artifacts without changing the repository working tree", () => {
+  const root = createRepository();
+
+  execFileSync(process.execPath, [cliFilePath, "init"], { cwd: root, encoding: "utf8" });
+
+  assert.equal(readFileSync(join(root, ".opendiff", ".gitignore"), "utf8"), "*\n");
+  assert.equal(existsSync(join(root, ".gitignore")), false);
+  assert.deepEqual(getWorkingTree(root), { clean: true, files: [] });
 });
 
 test("reports its package version and rejects unknown options", () => {
-  const version = execFileSync(process.execPath, [cliPath.pathname, "--version"], { encoding: "utf8" }).trim();
+  const version = execFileSync(process.execPath, [cliFilePath, "--version"], { encoding: "utf8" }).trim();
   assert.match(version, /^\d+\.\d+\.\d+/);
 
-  const invalid = spawnSync(process.execPath, [cliPath.pathname, "validate", "--unknown"], { encoding: "utf8" });
+  const invalid = spawnSync(process.execPath, [cliFilePath, "validate", "--unknown"], { encoding: "utf8" });
   assert.equal(invalid.status, 1);
   assert.match(invalid.stderr, /Unknown option or argument/);
 });
