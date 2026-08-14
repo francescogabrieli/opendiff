@@ -4,6 +4,8 @@ All notable changes to OpenDiff are documented here. The project follows [Semant
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-14
+
 ### Added
 
 - Add the backward-compatible review schema `2.0` with explicit problems, outcomes, decisions, alternatives, invariants, acceptance criteria, evidence, and design deviations.
