@@ -10,6 +10,7 @@ OpenDiff is:
 - **deterministic**: the renderer presents supplied facts and never calls a model;
 - **working-tree native**: reviews can include staged, unstaged, and untracked changes;
 - **agent-authored**: the implementing agent owns the narrative and reading order;
+- **idea-first**: reviewers inspect decisions, invariants, and evidence before opening implementation details;
 - **schema-driven**: producers and consumers share a versioned document contract;
 - **degradable**: unresolved references are visible warnings, not hidden failures.
 
@@ -70,7 +71,7 @@ Loads review and diff data, resolves references, normalizes incomplete fixture d
 | Data | Authoritative owner |
 | --- | --- |
 | Source changes and line contents | Git working tree |
-| Narrative, intent, risks, and test claims | Implementing agent via `review.json` |
+| Design, narrative, intent, risks, and test claims | Implementing agent via `review.json` |
 | File counts, additions, deletions, fingerprint | CLI Git adapter |
 | Reference resolution and warnings | CLI/browser validation |
 | Expanded files, visited sections, display preferences | Browser local storage |
@@ -92,6 +93,8 @@ When adding functionality:
 5. design integrations as adapters around the core review contract;
 6. avoid mandatory accounts, remote services, or platform-specific assumptions;
 7. cover parsing and orchestration with Node tests and user-visible flows with Playwright.
+
+Schema `1.0` is the legacy guided-diff contract. Schema `2.0` adds an explicit `design` model and evidence-linked verification while preserving the same Git and renderer trust boundaries. See [DESIGN.md](../DESIGN.md) for the product model.
 
 ## Trust boundaries
 

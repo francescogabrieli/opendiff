@@ -27,7 +27,7 @@ const deletion = (
 const hunk = (id: string, content: string): DiffLine => ({ id, type: "hunk", content });
 
 export const SAMPLE_REVIEW: ReviewData = {
-  schemaVersion: "1.0",
+  schemaVersion: "2.0",
   project: { name: "opendiff", root: "." },
   review: {
     id: "2026-07-29-token-refresh",
@@ -57,6 +57,53 @@ export const SAMPLE_REVIEW: ReviewData = {
     deletions: 43,
     sections: 4,
     testsChanged: 2,
+  },
+  design: {
+    problem: "Parallel requests can all observe an expired access token and start competing refresh operations.",
+    desiredOutcome: "One refresh operation repairs the session and every waiting request either retries once with the same credentials or receives the same failure.",
+    nonGoals: ["Coordinate refreshes across browser tabs.", "Hide a permanent authentication failure behind repeated retries."],
+    decisions: [
+      {
+        id: "decision-single-flight",
+        title: "Share one in-flight refresh promise per client",
+        rationale: "A promise gives concurrent callers the same result without adding a queue or changing the request API.",
+        alternatives: ["Serialize all authenticated requests.", "Allow every failed request to refresh independently."],
+        status: "accepted",
+      },
+      {
+        id: "decision-retry-once",
+        title: "Retry an authenticated request at most once",
+        rationale: "A retry marker preserves transparent recovery while preventing an invalid refresh result from creating a loop.",
+        alternatives: ["Retry until the refresh endpoint fails.", "Return every initial 401 to the caller."],
+        status: "accepted",
+      },
+    ],
+    invariants: [
+      { id: "invariant-single-flight", statement: "Concurrent expired requests share exactly one active refresh operation.", importance: "must" },
+      { id: "invariant-retry-once", statement: "An authenticated request is replayed no more than once.", importance: "must" },
+      { id: "invariant-atomic-session", statement: "Access and refresh credentials become visible as one session update.", importance: "must" },
+    ],
+    acceptanceCriteria: [
+      {
+        id: "criterion-concurrent-401",
+        statement: "Several simultaneous 401 responses trigger one refresh and resume with the same session.",
+        status: "verified",
+        evidence: [{ type: "test", command: "pnpm test auth", referenceId: "ref-coordinator-tests", description: "The concurrency test controls and shares one refresh promise." }],
+      },
+      {
+        id: "criterion-failed-refresh",
+        statement: "A failed refresh reaches every waiter and does not poison a later attempt.",
+        status: "verified",
+        evidence: [{ type: "test", command: "pnpm test auth", referenceId: "ref-coordinator-tests", description: "The rejection test releases the active operation before a later attempt." }],
+      },
+      {
+        id: "criterion-cross-tab",
+        statement: "Two browser tabs share refresh coordination.",
+        status: "unverified",
+        evidence: [],
+      },
+    ],
+    deviations: ["Cross-tab coordination remains outside the implementation because the coordinator is scoped to one client instance."],
   },
   sections: [
     {
@@ -200,8 +247,8 @@ export const SAMPLE_REVIEW: ReviewData = {
   ],
   tests: {
     executed: [
-      { command: "pnpm test auth", status: "passed", summary: "18 tests passed.", durationMs: 4821 },
-      { command: "pnpm typecheck", status: "passed", summary: "No TypeScript errors.", durationMs: 2190 },
+      { command: "pnpm test auth", status: "passed", summary: "18 tests passed.", durationMs: 4821, supports: ["invariant-single-flight", "invariant-retry-once", "invariant-atomic-session", "criterion-concurrent-401", "criterion-failed-refresh"] },
+      { command: "pnpm typecheck", status: "passed", summary: "No TypeScript errors.", durationMs: 2190, supports: ["invariant-atomic-session"] },
       { command: "pnpm lint", status: "passed", summary: "No lint errors.", durationMs: 1160 },
     ],
     notExecuted: [{ name: "End-to-end browser tests", reason: "The repository has no authenticated browser fixture." }],

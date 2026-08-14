@@ -13,8 +13,11 @@ import {
   Maximize2,
   MoreHorizontal,
   RefreshCw,
+  Scale,
+  ShieldCheck,
   SlidersHorizontal,
   Star,
+  Target,
 } from "lucide-react";
 import {
   useCallback,
@@ -41,7 +44,7 @@ type LoadState =
   | { status: "ready"; bundle: ReviewBundle }
   | { status: "error"; error: unknown };
 
-type ReviewView = "activity" | "diff" | "guide";
+type ReviewView = "design" | "evidence" | "diff";
 type DiffMode = "unified" | "split";
 
 function IconButton({
@@ -66,16 +69,6 @@ function IconButton({
       {children}
     </button>
   );
-}
-
-function formatReviewTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Generated locally";
-  const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
-  if (seconds < 60) return "Generated just now";
-  if (seconds < 3600) return `Generated ${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `Generated ${Math.floor(seconds / 3600)}h ago`;
-  return `Generated ${Math.floor(seconds / 86400)}d ago`;
 }
 
 function fileForReference(files: DiffFile[], reference: ReviewReference): DiffFile | undefined {
@@ -492,6 +485,89 @@ function GuideFileButton({
   );
 }
 
+function DesignOverview({ review, onOpenEvidence }: { review: ReviewBundle["review"]; onOpenEvidence: (criterionId?: string) => void }) {
+  const design = review.design;
+  if (!design) return null;
+  const verified = design.acceptanceCriteria.filter((criterion) => criterion.status === "verified").length;
+
+  return (
+    <section className="lg-design-overview" data-testid="design-overview" aria-labelledby="design-overview-title">
+      <header className="lg-design-hero">
+        <span>Design</span>
+        <h1 id="design-overview-title">Own the model before reading the code</h1>
+        <p>{design.problem}</p>
+        <div className="lg-design-outcome"><Target size={15} /><div><strong>Desired outcome</strong><p>{design.desiredOutcome}</p></div></div>
+      </header>
+
+      <div className="lg-design-grid">
+        <section className="lg-design-card">
+          <div className="lg-design-card-heading"><Scale size={14} /><h2>Decisions</h2><span>{design.decisions.length}</span></div>
+          {design.decisions.map((decision) => (
+            <article key={decision.id} data-testid={`decision-${decision.id}`}>
+              <div className="lg-design-item-title"><strong>{decision.title}</strong><span>{decision.status}</span></div>
+              <p>{decision.rationale}</p>
+              {decision.alternatives.length ? <small>Instead of: {decision.alternatives.join(" · ")}</small> : null}
+            </article>
+          ))}
+        </section>
+
+        <section className="lg-design-card">
+          <div className="lg-design-card-heading"><ShieldCheck size={14} /><h2>Invariants</h2><span>{design.invariants.length}</span></div>
+          {design.invariants.map((invariant) => (
+            <article className="lg-invariant" key={invariant.id} data-testid={`invariant-${invariant.id}`}>
+              <span className={`lg-importance is-${invariant.importance}`}>{invariant.importance}</span>
+              <p>{invariant.statement}</p>
+            </article>
+          ))}
+        </section>
+      </div>
+
+      <section className="lg-design-coverage" aria-labelledby="coverage-title">
+        <div>
+          <span><CircleCheck size={14} /></span>
+          <div><h2 id="coverage-title">Evidence coverage</h2><p>{verified} of {design.acceptanceCriteria.length} acceptance criteria are verified.</p></div>
+        </div>
+        <div className="lg-design-criteria-summary">
+          {design.acceptanceCriteria.map((criterion) => (
+            <button type="button" key={criterion.id} data-testid={`design-criterion-${criterion.id}`} className={`is-${criterion.status}`} onClick={() => onOpenEvidence(criterion.id)}>
+              {criterion.status === "verified" ? <Check size={12} /> : <AlertTriangle size={12} />}
+              <span>{criterion.statement}</span>
+              <small>{criterion.status}</small>
+            </button>
+          ))}
+        </div>
+        <button type="button" className="lg-open-evidence" onClick={() => onOpenEvidence()}>Review all evidence <ChevronRight size={13} /></button>
+      </section>
+
+      {design.deviations.length || design.nonGoals.length ? (
+        <div className="lg-design-boundaries">
+          <div><strong>Non-goals</strong>{design.nonGoals.map((item) => <p key={item}>{item}</p>)}</div>
+          <div><strong>Deviations</strong>{design.deviations.length ? design.deviations.map((item) => <p key={item}>{item}</p>) : <p>None.</p>}</div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function EvidenceMatrix({ review, registerCriterion }: { review: ReviewBundle["review"]; registerCriterion: (id: string, element: HTMLElement | null) => void }) {
+  const design = review.design;
+  if (!design) return null;
+  const verified = design.acceptanceCriteria.filter((criterion) => criterion.status === "verified").length;
+
+  return (
+    <section className="lg-evidence-matrix" data-testid="evidence-matrix" aria-labelledby="evidence-title">
+      <div className="lg-design-card-heading"><CircleCheck size={14} /><h3 id="evidence-title">Acceptance criteria</h3><span>{verified}/{design.acceptanceCriteria.length} verified</span></div>
+      {design.acceptanceCriteria.map((criterion) => (
+        <article className={`lg-criterion is-${criterion.status}`} key={criterion.id} data-testid={`criterion-${criterion.id}`} ref={(element) => registerCriterion(criterion.id, element)}>
+          <span>{criterion.status === "verified" ? <Check size={13} /> : <AlertTriangle size={13} />}</span>
+          <div><strong>{criterion.statement}</strong>{criterion.evidence.length ? criterion.evidence.map((evidence) => <p key={`${evidence.type}-${evidence.description}`}><code>{evidence.type}</code> {evidence.description}</p>) : <p>No supporting evidence recorded.</p>}</div>
+          <small>{criterion.status}</small>
+        </article>
+      ))}
+    </section>
+  );
+}
+
 function ReviewGuide({
   bundle,
   onReload,
@@ -501,8 +577,11 @@ function ReviewGuide({
 }) {
   const { review, diff } = bundle;
   const [activeView, setActiveView] = useState<ReviewView>(() => {
+    if (window.location.hash) return "evidence";
     const stored = window.localStorage.getItem(`opendiff:${review.review.id}:view`);
-    return stored === "activity" || stored === "diff" || stored === "guide" ? stored : "guide";
+    if (stored === "guide" || stored === "activity") return "evidence";
+    if (stored === "evidence" || stored === "diff" || stored === "design") return stored;
+    return review.design ? "design" : "evidence";
   });
   const [activeSectionId, setActiveSectionId] = useState(
     () => window.localStorage.getItem(`opendiff:${review.review.id}:section`) ?? review.sections[0]?.id ?? "",
@@ -548,6 +627,7 @@ function ReviewGuide({
   const guideScrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const fileRefs = useRef<Record<string, HTMLElement | null>>({});
+  const criterionRefs = useRef<Record<string, HTMLElement | null>>({});
   const initialContextLines = useRef(contextLines);
 
   const activeIndex = Math.max(
@@ -608,6 +688,15 @@ function ReviewGuide({
     window.requestAnimationFrame(() => guideScrollRef.current?.scrollTo({ top: 0, behavior: "instant" }));
   }, [diff.files]);
 
+  const openEvidence = useCallback((criterionId?: string) => {
+    setActiveView("evidence");
+    setSettingsOpen(false);
+    window.requestAnimationFrame(() => {
+      if (criterionId) criterionRefs.current[criterionId]?.scrollIntoView({ behavior: "smooth", block: "center" });
+      else guideScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }, []);
+
   const selectSection = useCallback(
     (index: number, scroll = true, behavior: ScrollBehavior = "smooth") => {
       const bounded = Math.max(0, Math.min(review.sections.length - 1, index));
@@ -623,7 +712,7 @@ function ReviewGuide({
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
       if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "b" && activeView !== "activity") {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "b" && activeView !== "design") {
         event.preventDefault();
         if (splitAvailable) setDiffMode((current) => current === "split" ? "unified" : "split");
         return;
@@ -633,7 +722,7 @@ function ReviewGuide({
         setSettingsOpen(false);
         return;
       }
-      if (activeView !== "guide") return;
+      if (activeView !== "evidence") return;
       if (event.key === "j") {
         event.preventDefault();
         selectSection(activeIndex + 1, true, "auto");
@@ -718,7 +807,7 @@ function ReviewGuide({
 
       <nav className="lg-viewbar" aria-label="Review views">
         <div className="lg-view-tabs">
-          {(["activity", "diff", "guide"] as const).map((view) => (
+          {(review.design ? ["design", "evidence", "diff"] as const : ["evidence", "diff"] as const).map((view) => (
             <button
               type="button"
               key={view}
@@ -726,11 +815,11 @@ function ReviewGuide({
               aria-current={activeView === view ? "page" : undefined}
               onClick={() => selectView(view)}
             >
-              {view[0].toUpperCase() + view.slice(1)}
+              {view === "evidence" && !review.design ? "Guide" : view[0].toUpperCase() + view.slice(1)}
             </button>
           ))}
         </div>
-        {activeView !== "activity" ? <div className="lg-settings-control">
+        {activeView !== "design" ? <div className="lg-settings-control">
           <IconButton label="Diff display settings" onClick={() => setSettingsOpen((value) => !value)} active={settingsOpen}>
             <SlidersHorizontal size={14} />
           </IconButton>
@@ -766,47 +855,8 @@ function ReviewGuide({
       </nav>
 
       <main id="review-content" className="lg-guide-scroll diff-scroll" ref={guideScrollRef}>
-        {activeView === "activity" ? (
-          <section className="lg-mode-view lg-activity-view" data-testid="activity-view" aria-labelledby="activity-title">
-            <header className="lg-mode-header">
-              <span>Activity</span>
-              <h1 id="activity-title">Review activity</h1>
-              <p>Changes, generated guidance, and verification for this local review.</p>
-            </header>
-            <div className="lg-activity-layout">
-              <ol className="lg-activity-feed">
-                <li>
-                  <span className="lg-activity-icon is-complete"><CircleCheck size={14} /></span>
-                  <div><strong>Guided review generated</strong><p>{review.review.summary}</p></div>
-                  <time>{formatReviewTime(review.review.generatedAt).replace("Generated ", "")}</time>
-                </li>
-                {review.sections.map((section, index) => (
-                  <li key={section.id}>
-                    <span className="lg-activity-icon">{String(index + 1).padStart(2, "0")}</span>
-                    <div><strong>{section.title}</strong><p>{section.shortDescription}</p></div>
-                    <span>{section.references.length} {section.references.length === 1 ? "reference" : "references"}</span>
-                  </li>
-                ))}
-                {review.tests.executed.map((test) => (
-                  <li key={test.command}>
-                    <span className={`lg-activity-icon is-${test.status}`}>{test.status === "passed" ? <Check size={13} /> : <AlertTriangle size={13} />}</span>
-                    <div><strong>{test.command}</strong><p>{test.summary}</p></div>
-                    <span>{test.status}</span>
-                  </li>
-                ))}
-              </ol>
-              <aside className="lg-activity-summary">
-                <h2>Review summary</h2>
-                <dl>
-                  <div><dt>Status</dt><dd>{review.completion.status}</dd></div>
-                  <div><dt>Files</dt><dd>{review.stats.filesChanged}</dd></div>
-                  <div><dt>Sections</dt><dd>{review.sections.length}</dd></div>
-                  <div><dt>Changes</dt><dd><span className="lg-additions">+{review.stats.additions}</span> <span className="lg-deletions">−{review.stats.deletions}</span></dd></div>
-                </dl>
-                <p>{review.completion.summary}</p>
-              </aside>
-            </div>
-          </section>
+        {activeView === "design" ? (
+          <DesignOverview review={review} onOpenEvidence={openEvidence} />
         ) : activeView === "diff" ? (
           <section className="lg-mode-view lg-full-diff-view" data-testid="diff-view" aria-labelledby="diff-title">
             <header className="lg-mode-header lg-diff-mode-header">
@@ -840,56 +890,90 @@ function ReviewGuide({
           </section>
         ) : (
           <>
-            <header className="lg-guide-review-header">
-              <h1>[{issueKey}] {review.review.title}</h1>
+            <header className="lg-evidence-page-header" data-testid="evidence-page-header">
+              <span>Evidence</span>
+              <h1>Review what supports the design</h1>
+              <p>Validate the claims first. Inspect the implementation only where the evidence needs line-level context.</p>
               <div className="lg-guide-meta">
                 <span className="lg-meta-logo"><span /></span>
-                <span>OpenDiff</span><span>·</span><span>{review.project.name}</span><span>·</span>
+                <span>{review.review.title}</span><span>·</span><span>{review.project.name}</span><span>·</span>
                 <GitBranch size={12} /><span>{review.git.branch}</span><span>←</span>
                 <GitCommitHorizontal size={12} /><span>{review.git.baseCommit}</span>
+              </div>
+              <div className="lg-evidence-summary" aria-label="Evidence summary">
+                {review.design ? <span><strong>{review.design.acceptanceCriteria.filter((criterion) => criterion.status === "verified").length}/{review.design.acceptanceCriteria.length}</strong> criteria verified</span> : null}
+                <span><strong>{review.tests.executed.filter((test) => test.status === "passed").length}/{review.tests.executed.length}</strong> checks passed</span>
+                <span><strong>{review.sections.length}</strong> implementation sections</span>
               </div>
             </header>
 
             {bundle.validation.warnings.length ? <div className="lg-warning-banner review-warning-banner"><AlertTriangle size={14} /><span>{bundle.validation.warnings[0]}</span></div> : null}
             {bundle.stale ? <div className="lg-stale-banner" data-testid="stale-banner"><AlertTriangle size={14} /><span>The working tree has changed since this review was generated.</span><button type="button" onClick={() => void refresh()}>Refresh</button></div> : null}
 
-            <div className="lg-guide-sections">
-              {review.sections.map((section, sectionIndex) => {
-                const files = relevantFiles(section, diff.files);
-                return (
-                  <section
-                    key={section.id}
-                    className={`lg-guide-section ${activeSectionId === section.id ? "is-active" : ""}`}
-                    data-testid={`section-nav-item-${section.id}`}
-                    ref={(element) => { sectionRefs.current[section.id] = element; }}
-                    onClick={() => setActiveSectionId(section.id)}
-                  >
-                    <article className="lg-guide-copy">
-                      <div className="lg-section-count">{String(sectionIndex + 1).padStart(2, "0")} / {String(review.sections.length).padStart(2, "0")}</div>
-                      <h2>{section.title}</h2>
-                      <p className="lg-guide-purpose">{section.purpose}</p>
-                      {section.explanation.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-                      <div className="lg-guide-files" aria-label={`Files in ${section.title}`}>
-                        {section.references.map((reference) => {
-                          const file = fileForReference(diff.files, reference);
-                          if (!file) return <div className="lg-guide-file is-unresolved reference-item" key={reference.id}><AlertTriangle size={13} /><span>{reference.file}</span></div>;
-                          return <GuideFileButton key={reference.id} file={file} reference={reference} active={expandedFileKey === `${section.id}:${file.id}`} onClick={() => selectFile(section, file, reference)} />;
-                        })}
-                      </div>
-                      {section.relatedTests?.length ? <div className="lg-guide-verification"><span><Check size={12} /> Verified</span><p>{section.relatedTests[0]}</p></div> : null}
-                      {section.risks?.length ? <div className="lg-guide-risk"><AlertTriangle size={13} /><div><strong>{section.risks[0].title}</strong><p>{section.risks[0].description}</p></div></div> : null}
+            <section className="lg-evidence-stage" aria-labelledby="claims-verification-title">
+              <header className="lg-evidence-section-header">
+                <span className="lg-evidence-section-number">01</span>
+                <div><span>Claims &amp; verification</span><h2 id="claims-verification-title">What is proven — and what is not</h2><p>Acceptance criteria state the claims. Executed checks show which of them have concrete support.</p></div>
+              </header>
+              <div className="lg-evidence-overview">
+                <EvidenceMatrix review={review} registerCriterion={(id, element) => { criterionRefs.current[id] = element; }} />
+                <section className="lg-check-ledger" data-testid="check-ledger" aria-labelledby="checks-title">
+                  <div className="lg-design-card-heading"><ShieldCheck size={14} /><h3 id="checks-title">Executed checks</h3><span>{review.tests.executed.length}</span></div>
+                  {review.tests.executed.map((test) => (
+                    <article key={test.command} className={`is-${test.status}`}>
+                      <span>{test.status === "passed" ? <Check size={12} /> : <AlertTriangle size={12} />}</span>
+                      <div><code>{test.command}</code><p>{test.summary}</p>{test.supports?.length ? <small>Supports: {test.supports.join(" · ")}</small> : null}</div>
+                      <strong>{test.status}</strong>
                     </article>
-                    <div className="lg-section-diffs" aria-label={`Diffs for ${section.title}`}>
-                      {files.map((file) => {
-                        const key = `${section.id}:${file.id}`;
-                        return <DiffFileCard key={key} file={file} references={referencesForFile(section, file)} forceOpen={expandedFileKey === key} diffMode={diffMode} reviewed={reviewedFileIds.has(file.id)} onReviewedChange={() => toggleReviewed(file.id)} selectedLineId={selectedLineId} registerRef={(element) => { fileRefs.current[key] = element; }} onCopy={() => void copyText(file.path, "File path copied")} onLineSelect={(line) => { setExpandedFileKey(key); setSelectedLineId(line.id); window.history.replaceState(null, "", `#${file.id}/${line.id}`); }} />;
-                      })}
-                      {!files.length ? <div className="lg-empty-diff">No resolvable files are attached to this section.</div> : null}
-                    </div>
-                  </section>
-                );
-              })}
-            </div>
+                  ))}
+                  {review.tests.notExecuted.map((test) => <article className="is-skipped" key={test.name}><span><AlertTriangle size={12} /></span><div><code>{test.name}</code><p>{test.reason}</p></div><strong>not run</strong></article>)}
+                </section>
+              </div>
+            </section>
+
+            <section className="lg-evidence-stage lg-implementation-stage" aria-labelledby="implementation-map-title">
+              <header className="lg-evidence-section-header">
+                <span className="lg-evidence-section-number">02</span>
+                <div><span>Implementation map</span><h2 id="implementation-map-title">Where the design lives in the working tree</h2><p>Follow the implementation by intent, then open a reference only when a claim needs line-level inspection.</p></div>
+              </header>
+              <div className="lg-guide-sections">
+                {review.sections.map((section, sectionIndex) => {
+                  const files = relevantFiles(section, diff.files);
+                  return (
+                    <section
+                      key={section.id}
+                      className={`lg-guide-section ${activeSectionId === section.id ? "is-active" : ""}`}
+                      data-testid={`section-nav-item-${section.id}`}
+                      ref={(element) => { sectionRefs.current[section.id] = element; }}
+                      onClick={() => setActiveSectionId(section.id)}
+                    >
+                      <article className="lg-guide-copy">
+                        <div className="lg-section-count">{String(sectionIndex + 1).padStart(2, "0")} / {String(review.sections.length).padStart(2, "0")}</div>
+                        <h3>{section.title}</h3>
+                        <p className="lg-guide-purpose">{section.purpose}</p>
+                        {section.explanation.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+                        <div className="lg-guide-files" aria-label={`Files in ${section.title}`}>
+                          {section.references.map((reference) => {
+                            const file = fileForReference(diff.files, reference);
+                            if (!file) return <div className="lg-guide-file is-unresolved reference-item" key={reference.id}><AlertTriangle size={13} /><span>{reference.file}</span></div>;
+                            return <GuideFileButton key={reference.id} file={file} reference={reference} active={expandedFileKey === `${section.id}:${file.id}`} onClick={() => selectFile(section, file, reference)} />;
+                          })}
+                        </div>
+                        {section.relatedTests?.length ? <div className="lg-guide-verification"><span><Check size={12} /> Verified</span><p>{section.relatedTests[0]}</p></div> : null}
+                        {section.risks?.length ? <div className="lg-guide-risk"><AlertTriangle size={13} /><div><strong>{section.risks[0].title}</strong><p>{section.risks[0].description}</p></div></div> : null}
+                      </article>
+                      <div className="lg-section-diffs" aria-label={`Diffs for ${section.title}`}>
+                        {files.map((file) => {
+                          const key = `${section.id}:${file.id}`;
+                          return <DiffFileCard key={key} file={file} references={referencesForFile(section, file)} forceOpen={expandedFileKey === key} diffMode={diffMode} reviewed={reviewedFileIds.has(file.id)} onReviewedChange={() => toggleReviewed(file.id)} selectedLineId={selectedLineId} registerRef={(element) => { fileRefs.current[key] = element; }} onCopy={() => void copyText(file.path, "File path copied")} onLineSelect={(line) => { setExpandedFileKey(key); setSelectedLineId(line.id); window.history.replaceState(null, "", `#${file.id}/${line.id}`); }} />;
+                        })}
+                        {!files.length ? <div className="lg-empty-diff">No resolvable files are attached to this section.</div> : null}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+            </section>
             <footer className="lg-completion"><CircleCheck size={16} /><span>{review.completion.summary}</span></footer>
           </>
         )}

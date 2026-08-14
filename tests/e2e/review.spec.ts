@@ -10,19 +10,20 @@ test.describe("OpenDiff guided review", () => {
     await page.getByRole("button", { name: "Diff", exact: true }).click();
     const changedFileCount = await page.locator('[data-testid^="diff-file-"]').count();
     await expect(page.getByTestId("changed-files-summary")).toHaveText(`${changedFileCount} files changed`);
-    await page.getByRole("button", { name: "Guide", exact: true }).click();
-    await expect(page.getByRole("heading", { name: /Add coordinated token refresh/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Guide" })).toHaveAttribute("aria-current", "page");
-    await expect(page.getByText("01 / 04")).toBeVisible();
+    await page.getByRole("button", { name: "Design", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Own the model before reading the code" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Design" })).toHaveAttribute("aria-current", "page");
   });
 
-  test("switches between Activity, Diff, and Guide views", async ({ page }) => {
+  test("switches between Design, Evidence, and Diff views", async ({ page }) => {
     await page.goto(demoUrl);
 
-    await page.getByRole("button", { name: "Activity", exact: true }).click();
-    await expect(page.getByRole("button", { name: "Activity", exact: true })).toHaveAttribute("aria-current", "page");
-    await expect(page.getByTestId("activity-view")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Review activity" })).toBeVisible();
+    await page.getByRole("button", { name: "Evidence", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Evidence", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByTestId("evidence-matrix")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Review what supports the design" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "What is proven — and what is not" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Where the design lives in the working tree" })).toBeVisible();
 
     await page.getByRole("button", { name: "Diff", exact: true }).click();
     await expect(page.getByRole("button", { name: "Diff", exact: true })).toHaveAttribute("aria-current", "page");
@@ -30,9 +31,25 @@ test.describe("OpenDiff guided review", () => {
     await expect(page.getByRole("heading", { name: "All changes" })).toBeVisible();
     await expect(page.getByTestId("diff-line-file-refresh-coordinator-refresh-1")).toBeVisible();
 
-    await page.getByRole("button", { name: "Guide", exact: true }).click();
-    await expect(page.getByRole("button", { name: "Guide", exact: true })).toHaveAttribute("aria-current", "page");
-    await expect(page.getByText("01 / 04")).toBeVisible();
+    await page.getByRole("button", { name: "Design", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Design", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByTestId("design-overview")).toBeVisible();
+  });
+
+  test("presents the design model and distinguishes verified from unverified claims", async ({ page }) => {
+    await page.goto(demoUrl);
+
+    await expect(page.getByTestId("design-overview")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Own the model before reading the code" })).toBeVisible();
+    await expect(page.getByTestId("decision-decision-single-flight")).toContainText("Share one in-flight refresh promise per client");
+    await expect(page.getByTestId("invariant-invariant-single-flight")).toContainText("share exactly one active refresh operation");
+    await expect(page.getByTestId("design-criterion-criterion-concurrent-401")).toContainText("verified");
+    await expect(page.getByTestId("design-criterion-criterion-cross-tab")).toContainText("unverified");
+
+    await page.getByTestId("design-criterion-criterion-cross-tab").click();
+    await expect(page.getByRole("button", { name: "Evidence" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByTestId("criterion-criterion-cross-tab")).toBeVisible();
+    await expect(page.getByTestId("criterion-criterion-cross-tab")).toContainText("No supporting evidence recorded.");
   });
 
   test("scrolls one continuous guided document", async ({ page }) => {
@@ -51,6 +68,7 @@ test.describe("OpenDiff guided review", () => {
 
   test("activates a logical section without replacing the page", async ({ page }) => {
     await page.goto(demoUrl);
+    await page.getByRole("button", { name: "Evidence", exact: true }).click();
     const section = page.getByTestId("section-nav-item-request-retry");
 
     await section.getByRole("heading", { name: "Retry the failed authenticated request" }).click();
@@ -61,6 +79,7 @@ test.describe("OpenDiff guided review", () => {
 
   test("jumps from a guide reference to its linked code", async ({ page }) => {
     await page.goto(demoUrl);
+    await page.getByRole("button", { name: "Evidence", exact: true }).click();
 
     await page.getByTestId("reference-ref-refresh-coordinator").click();
 
@@ -71,6 +90,7 @@ test.describe("OpenDiff guided review", () => {
 
   test("collapses and reopens a diff file", async ({ page }) => {
     await page.goto(demoUrl);
+    await page.getByRole("button", { name: "Evidence", exact: true }).click();
     await page.getByTestId("reference-ref-refresh-coordinator").click();
     const file = page.getByTestId("diff-file-file-refresh-coordinator");
 
@@ -83,6 +103,7 @@ test.describe("OpenDiff guided review", () => {
 
   test("changes the amount of diff context from display settings", async ({ page }) => {
     await page.goto(demoUrl);
+    await page.getByRole("button", { name: "Evidence", exact: true }).click();
 
     await page.getByRole("button", { name: "Diff display settings" }).click();
     await page.getByRole("menuitemradio", { name: "8 lines" }).click();
@@ -94,6 +115,7 @@ test.describe("OpenDiff guided review", () => {
   test("switches to a split diff and toggles line wrapping", async ({ page }) => {
     // Given an expanded file in the guided review
     await page.goto(demoUrl);
+    await page.getByRole("button", { name: "Evidence", exact: true }).click();
     await page.getByTestId("reference-ref-refresh-coordinator").click();
 
     // When the reviewer changes the display options
@@ -109,6 +131,7 @@ test.describe("OpenDiff guided review", () => {
   test("persists reviewed files across reloads", async ({ page }) => {
     // Given an expanded file that has not been reviewed
     await page.goto(demoUrl);
+    await page.getByRole("button", { name: "Evidence", exact: true }).click();
     await page.getByTestId("reference-ref-refresh-coordinator").click();
     const file = page.getByTestId("diff-file-file-refresh-coordinator");
 
@@ -125,6 +148,7 @@ test.describe("OpenDiff guided review", () => {
     // Given a phone-sized viewport
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(demoUrl);
+    await page.getByRole("button", { name: "Evidence", exact: true }).click();
 
     // When display settings are opened
     await page.getByRole("button", { name: "Diff display settings" }).click();
@@ -132,10 +156,17 @@ test.describe("OpenDiff guided review", () => {
     // Then content stays within the viewport and split mode is unavailable
     await expect(page.getByRole("button", { name: "Split", exact: true })).toBeDisabled();
     await expect.poll(() => page.locator(".lg-guide-scroll").evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    for (const heading of ["Review what supports the design", "What is proven — and what is not", "Where the design lives in the working tree"]) {
+      await expect.poll(() => page.getByRole("heading", { name: heading }).evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        return bounds.left >= 0 && bounds.right <= window.innerWidth;
+      })).toBe(true);
+    }
   });
 
   test("restores a selected line deep link after reload", async ({ page }) => {
     await page.goto(demoUrl);
+    await page.getByRole("button", { name: "Evidence", exact: true }).click();
     await page.getByTestId("reference-ref-refresh-coordinator").click();
     await expect(page.locator(".diff-line-row.is-selected")).toHaveCount(1);
 
@@ -147,6 +178,7 @@ test.describe("OpenDiff guided review", () => {
 
   test("shows a stale-review warning", async ({ page }) => {
     await page.goto("/?fixture=stale");
+    await page.getByRole("button", { name: "Evidence", exact: true }).click();
 
     await expect(page.getByTestId("stale-banner")).toBeVisible();
     await expect(page.getByText("The working tree has changed since this review was generated.")).toBeVisible();
@@ -154,6 +186,7 @@ test.describe("OpenDiff guided review", () => {
 
   test("keeps an unresolved reference visible and marked", async ({ page }) => {
     await page.goto("/?fixture=invalid");
+    await page.getByRole("button", { name: "Evidence", exact: true }).click();
 
     await expect(page.locator(".review-warning-banner")).toBeVisible();
     await expect(page.locator(".reference-item.is-unresolved")).toHaveCount(1);
@@ -161,6 +194,7 @@ test.describe("OpenDiff guided review", () => {
 
   test("persists the active section", async ({ page }) => {
     await page.goto(demoUrl);
+    await page.getByRole("button", { name: "Evidence", exact: true }).click();
     const section = page.getByTestId("section-nav-item-request-retry");
     await section.getByRole("heading", { name: "Retry the failed authenticated request" }).click();
     await expect(section).toHaveClass(/is-active/);
@@ -172,6 +206,7 @@ test.describe("OpenDiff guided review", () => {
 
   test("supports guided keyboard navigation", async ({ page }) => {
     await page.goto(demoUrl);
+    await page.getByRole("button", { name: "Evidence", exact: true }).click();
 
     await page.locator("body").press("j");
     await expect(page.getByTestId("section-nav-item-request-retry")).toHaveClass(/is-active/);

@@ -1,11 +1,11 @@
 ---
 name: opendiff
-description: Implement a code change and present the final working-tree diff as a local, Linear-style guided review. Use when the user invokes OpenDiff, tags @opendiff, asks for a guided review, or wants the change explained by intent instead of filename order.
+description: Implement a code change and present its design, evidence, and final working-tree diff as a local guided review. Use when the user invokes OpenDiff, tags @opendiff, asks for a guided review, or wants a change explained by intent instead of filename order.
 ---
 
 # OpenDiff
 
-Implement the user's request, then produce and open a factual guided review of the exact final change.
+Capture the intended design, implement the user's request, then produce and open a factual review of the design, evidence, and exact final change.
 
 OpenDiff is a deterministic local renderer. You, the same coding agent that implements the change, must author the explanation. Never delegate the narrative to a second model or agent.
 
@@ -13,7 +13,7 @@ OpenDiff is a deterministic local renderer. You, the same coding agent that impl
 
 1. Preserve existing user work. Do not reset, stage, commit, delete, or rewrite unrelated changes.
 2. Capture the Git baseline before editing whenever possible.
-3. Ground every statement in code you read, the final Git diff, or checks you actually ran.
+3. Ground every statement in repository context, code you read, the final Git diff, or checks you actually ran.
 4. Read the complete final change again after the last edit.
 5. Do not place source code or the full diff inside `review.json`; store narrative, metadata, checks, risks, assumptions, and precise references only.
 6. Do not ask the user to run `init`, `render`, `validate`, or `open`. The skill owns the complete review flow.
@@ -42,13 +42,27 @@ Record:
 
 When invoked after editing has already started, do not invent a clean baseline. Record the best-known state and explain the uncertainty under `assumptions`.
 
-## 2. Implement and verify
+## 2. Capture the design model
+
+Before editing, write down the smallest useful mental model for the change:
+
+- the problem and observable desired outcome;
+- non-goals that keep the task bounded;
+- decisions, their rationale, and meaningful rejected alternatives;
+- invariants that must or should remain true;
+- acceptance criteria that could prove the requested outcome.
+
+For a small mechanical change, keep this concise. For a change that affects architecture, persistence, concurrency, security, migration, or a public contract, make the model explicit before implementation. Do not retrofit a fictional rationale after the code exists.
+
+## 3. Implement and verify
 
 Implement the request using the repository's conventions.
 
 Run the narrowest relevant checks first, then broader typecheck, lint, build, or end-to-end checks when warranted. Record every attempted check with its exact command, status, and factual summary. Never report an unrun check as passing.
 
-## 3. Inspect the complete final change
+Challenge the implementation rather than only confirming its happy path. When relevant, check edge cases, invalid input, concurrency, rollback, migration, compatibility, and performance claims. Link each executed check to the invariant or acceptance criterion it supports. A passing command without a supported claim is context, not proof of the design.
+
+## 4. Inspect the complete final change
 
 Read tracked and untracked changes:
 
@@ -95,15 +109,17 @@ Use the review fields deliberately:
 - `impact` records observable consequences, architectural effects, invariants, or maintenance implications;
 - `references` are evidence for the narrative, not a substitute for it.
 
-## 4. Write `.opendiff/review.json`
+Reconcile the final implementation with the pre-implementation model. Record every material deviation, including deliberate scope reductions. Mark a criterion `verified` only when it has concrete evidence; otherwise keep it `unverified`.
+
+## 5. Write `.opendiff/review.json`
 
 Create `.opendiff/.gitignore` containing `*` when it does not already exist. This keeps all local review material out of Git without modifying the repository's root `.gitignore`.
 
-Create `.opendiff/` when necessary and write strict JSON matching schema version `1.0`:
+Create `.opendiff/` when necessary and write strict JSON matching schema version `2.0`. Include this idea-first block before `sections`:
 
 ```json
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "2.0",
   "project": { "name": "project-name", "root": "." },
   "review": {
     "id": "stable-review-id",
@@ -134,6 +150,34 @@ Create `.opendiff/` when necessary and write strict JSON matching schema version
     "deletions": 0,
     "sections": 1,
     "testsChanged": 0
+  },
+  "design": {
+    "problem": "The concrete problem the change must solve.",
+    "desiredOutcome": "The observable state when the change succeeds.",
+    "nonGoals": ["A nearby concern deliberately kept out of scope."],
+    "decisions": [
+      {
+        "id": "decision-primary",
+        "title": "The chosen design",
+        "rationale": "Why this model fits the constraints.",
+        "alternatives": ["A meaningful alternative that was not chosen."],
+        "status": "accepted"
+      }
+    ],
+    "invariants": [
+      { "id": "invariant-primary", "statement": "A property that must remain true.", "importance": "must" }
+    ],
+    "acceptanceCriteria": [
+      {
+        "id": "criterion-primary",
+        "statement": "A falsifiable success condition.",
+        "status": "verified",
+        "evidence": [
+          { "type": "test", "command": "npm test", "description": "The focused assertion that demonstrates the condition." }
+        ]
+      }
+    ],
+    "deviations": []
   },
   "sections": [
     {
@@ -169,7 +213,8 @@ Create `.opendiff/` when necessary and write strict JSON matching schema version
       {
         "command": "npm test",
         "status": "passed",
-        "summary": "The relevant tests passed."
+        "summary": "The relevant tests passed.",
+        "supports": ["invariant-primary", "criterion-primary"]
       }
     ],
     "notExecuted": []
@@ -197,7 +242,16 @@ Replace every placeholder with real data and write all narrative placeholders in
 - Use risk objects with `severity`, `title`, `description`, and optional `relatedReferences`.
 - Put unfinished work in `completion.remainingWork`, not in assumptions.
 
-## 5. Validate and open the review
+### Design requirements
+
+- Give decisions, invariants, and acceptance criteria unique stable lowercase IDs.
+- Make criteria falsifiable; avoid statements such as “the implementation works.”
+- Keep `verified` criteria backed by at least one evidence record.
+- Use `supports` to connect executed checks to invariant or criterion IDs.
+- Record intentional differences from the initial design under `deviations`.
+- Keep code references as evidence, not as the measure of whether a review is complete.
+
+## 6. Validate and open the review
 
 Run the full flow from the target repository root:
 

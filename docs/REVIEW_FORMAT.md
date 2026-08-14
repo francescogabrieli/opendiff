@@ -1,6 +1,6 @@
 # Review format
 
-OpenDiff schema `1.0` separates agent-authored context from Git-derived code. The canonical machine-readable contract is [`schemas/review.schema.json`](../schemas/review.schema.json); the CLI validates the same structure with Zod.
+OpenDiff schema `2.0` separates the agent-authored design and evidence from Git-derived code. The reader and validator remain compatible with schema `1.0` reviews. The canonical machine-readable contract is [`schemas/review.schema.json`](../schemas/review.schema.json); the CLI validates the same structure with Zod.
 
 ## File location
 
@@ -10,11 +10,12 @@ Place the document at `.opendiff/review.json` in the repository being reviewed. 
 
 | Field | Purpose |
 | --- | --- |
-| `schemaVersion` | Contract version; currently exactly `1.0`. |
+| `schemaVersion` | Contract version; `2.0` is current and `1.0` remains supported. |
 | `project` | Display name and repository-relative root. |
 | `review` | Review identity, task, summary, title, and generation time. |
 | `git` | Base/target metadata and included working-tree states. |
 | `stats` | Agent-estimated summary, recalculated by the renderer. |
+| `design` | Problem, outcome, decisions, invariants, acceptance criteria, evidence, and deviations. Required in `2.0`. |
 | `sections` | Ordered reading path grouped by implementation intent. |
 | `tests` | Checks executed and checks intentionally not executed. |
 | `risks` | Evidence-backed limitations or failure modes. |
@@ -40,6 +41,19 @@ A reference uses repository-relative POSIX paths and inclusive line ranges:
 ```
 
 `kind` is `primary`, `secondary`, or `test`. Use small ranges that intersect the actual diff. Create separate references for separate hunks. IDs must be unique across the document.
+
+## Design and evidence
+
+Schema `2.0` makes the review's mental model explicit before its implementation narrative:
+
+- `problem` and `desiredOutcome` define the before/after boundary;
+- `decisions` record the chosen model, rationale, alternatives, and whether the decision was revised;
+- `invariants` state properties that must or should remain true;
+- `acceptanceCriteria` are falsifiable claims with `verified` or `unverified` status;
+- `evidence` links a criterion to code, tests, benchmarks, manual observations, or design material;
+- `deviations` disclose where the final implementation differs from the initial model.
+
+A `verified` criterion requires at least one evidence record. Executed tests can use `supports` to reference invariant and criterion IDs. Unknown IDs and evidence-free verified criteria fail runtime validation.
 
 For pure additions, set `oldLines` to `null`. For modified lines, include the corresponding old-side range. Deleted-only and binary changes have limited new-side line information; follow the rules in the bundled [agent skill](../skills/opendiff/SKILL.md) and disclose unresolved warnings.
 

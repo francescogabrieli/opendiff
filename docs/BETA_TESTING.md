@@ -14,7 +14,7 @@ Send participants the canonical starting point: <https://github.com/francescogab
 2. Install the skill from the README.
 3. Restart Codex or Claude Code when instructed.
 4. Invoke `@opendiff` for a real change or ask it to explain the existing change through a guided review.
-5. Open the review and inspect at least one reference, one file diff, and the verification section.
+5. Open the review and inspect its decisions, invariants, evidence matrix, one code reference, and one file diff.
 6. Run `git status --short` after the review.
 
 Never ask participants to share proprietary source, credentials, or the complete `.opendiff/review.json`.
@@ -28,6 +28,8 @@ Never ask participants to share proprietary source, credentials, or the complete
 - unexpected files in `git status --short`;
 - warnings or errors, with sanitized output;
 - one sentence describing what they believed OpenDiff did;
+- one sentence explaining the change's mental model after reading the review;
+- one failure mode or unverified criterion they noticed;
 - whether they would use it again and why.
 
 Use the repository's **Beta feedback** issue form for the report.
@@ -39,6 +41,8 @@ Broad promotion is ready when:
 - at least four of five participants reach a first review within five minutes without live assistance;
 - all five finish with no OpenDiff-generated paths in Git status;
 - no participant believes source code was uploaded;
+- at least four participants can explain the central design decision without reading every changed file;
+- at least four participants correctly identify one invariant and whether its evidence is complete;
 - every blocking failure has either been fixed or documented with a direct recovery step;
 - at least two participants complete a second review voluntarily or say they would use OpenDiff again.
 
