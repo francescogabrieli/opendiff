@@ -67,10 +67,48 @@ export type ReviewTest = {
   status: "passed" | "failed" | "skipped";
   summary: string;
   durationMs?: number;
+  supports?: string[];
 };
 
-export type ReviewData = {
-  schemaVersion: "1.0";
+export type ReviewDecision = {
+  id: string;
+  title: string;
+  rationale: string;
+  alternatives: string[];
+  status: "accepted" | "revised";
+};
+
+export type ReviewInvariant = {
+  id: string;
+  statement: string;
+  importance: "must" | "should";
+};
+
+export type ReviewEvidence = {
+  type: "code" | "test" | "benchmark" | "manual" | "design";
+  description: string;
+  referenceId?: string;
+  command?: string;
+};
+
+export type ReviewCriterion = {
+  id: string;
+  statement: string;
+  status: "verified" | "unverified";
+  evidence: ReviewEvidence[];
+};
+
+export type ReviewDesign = {
+  problem: string;
+  desiredOutcome: string;
+  nonGoals: string[];
+  decisions: ReviewDecision[];
+  invariants: ReviewInvariant[];
+  acceptanceCriteria: ReviewCriterion[];
+  deviations: string[];
+};
+
+type ReviewDataBase = {
   project: { name: string; root: string };
   review: {
     id: string;
@@ -108,17 +146,10 @@ export type ReviewData = {
   completion: { status: ReviewStatus; summary: string; remainingWork: string[] };
 };
 
-export type ReviewUiState = {
-  activeSectionId: string | null;
-  activeReferenceId: string | null;
-  expandedFiles: Record<string, boolean>;
-  visitedSections: string[];
-  contextLines: number;
-  showWhitespace: boolean;
-  navigationOpen: boolean;
-  explanationOpen: boolean;
-  selectedLineAnchor: string | null;
-};
+export type ReviewData = ReviewDataBase & (
+  | { schemaVersion: "1.0"; design?: never }
+  | { schemaVersion: "2.0"; design: ReviewDesign }
+);
 
 export type DiffDocument = {
   files: Partial<DiffFile>[];

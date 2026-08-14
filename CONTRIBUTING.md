@@ -94,3 +94,7 @@ Maintainers may ask to split unrelated work. Passing CI is required but does not
 ## Reporting security issues
 
 Do not open a public issue for a suspected vulnerability or accidental disclosure. Follow [SECURITY.md](SECURITY.md).
+
+## Maintainer releases
+
+Package publication and release operations are documented outside the user README. See [docs/RELEASING.md](docs/RELEASING.md) and [docs/NPM_RELEASE.md](docs/NPM_RELEASE.md).

@@ -4,7 +4,17 @@ All notable changes to OpenDiff are documented here. The project follows [Semant
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Added
+
+- Add the backward-compatible review schema `2.0` with explicit problems, outcomes, decisions, alternatives, invariants, acceptance criteria, evidence, and design deviations.
+- Add separate Design, Evidence, and Diff views so the mental model, supporting proof, and full implementation remain connected without competing in one document.
+- Add `DESIGN.md` as the durable statement of OpenDiff's idea-first product model.
+
+### Changed
+
+- Update the bundled agent workflow to capture the design before implementation and connect executed checks to supported claims.
+- Remove the unreachable legacy renderer, its browser-state helper, and its unused virtualization dependency.
+- Refocus the package README entirely on installation, usage, troubleshooting, privacy, and support; move release operations to maintainer documentation.
 
 ## [0.1.7] - 2026-08-12
 

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "2.0",
   "project": { "name": "small-review", "root": "." },
   "review": {
     "id": "small-review",
@@ -20,6 +20,34 @@
     "initialWorkingTree": { "clean": true, "preExistingChanges": [] }
   },
   "stats": { "filesChanged": 1, "filesAdded": 0, "filesModified": 1, "filesDeleted": 0, "additions": 2, "deletions": 1, "sections": 1, "testsChanged": 1 },
+  "design": {
+    "problem": "Malformed requests reach the transport boundary before their required identifier is checked.",
+    "desiredOutcome": "A request without an identifier fails locally before transport is invoked.",
+    "nonGoals": ["Change how valid requests are serialized."],
+    "decisions": [
+      {
+        "id": "decision-guard-boundary",
+        "title": "Validate at the existing request guard",
+        "rationale": "The guard is the last shared boundary before transport and already owns request validation.",
+        "alternatives": ["Validate independently in every caller."],
+        "status": "accepted"
+      }
+    ],
+    "invariants": [
+      { "id": "invariant-invalid-stays-local", "statement": "A request without an identifier never reaches transport.", "importance": "must" }
+    ],
+    "acceptanceCriteria": [
+      {
+        "id": "criterion-missing-id",
+        "statement": "The guard rejects a request without an identifier using the documented local error.",
+        "status": "verified",
+        "evidence": [
+          { "type": "test", "command": "npm test -- request-guard", "referenceId": "ref-request-guard", "description": "The focused test exercises the missing-identifier path." }
+        ]
+      }
+    ],
+    "deviations": []
+  },
   "sections": [
     {
       "id": "request-guard",
@@ -35,7 +63,7 @@
       "relatedTests": ["rejects a request without an identifier"]
     }
   ],
-  "tests": { "executed": [{ "command": "npm test -- request-guard", "status": "passed", "summary": "1 test passed.", "durationMs": 120 }], "notExecuted": [] },
+  "tests": { "executed": [{ "command": "npm test -- request-guard", "status": "passed", "summary": "1 test passed.", "durationMs": 120, "supports": ["invariant-invalid-stays-local", "criterion-missing-id"] }], "notExecuted": [] },
   "risks": [],
   "assumptions": [],
   "completion": { "status": "complete", "summary": "The fixture change is complete.", "remainingWork": [] }

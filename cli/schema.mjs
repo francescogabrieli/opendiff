@@ -14,6 +14,39 @@ export const executedTestSchema = z.object({
   status: z.enum(["passed", "failed", "skipped"]),
   summary: z.string().min(1),
   durationMs: z.number().nonnegative().optional(),
+  supports: z.array(z.string().min(1)).optional(),
+});
+
+const reviewEvidenceSchema = z.object({
+  type: z.enum(["code", "test", "benchmark", "manual", "design"]),
+  description: z.string().min(1),
+  referenceId: z.string().min(1).optional(),
+  command: z.string().min(1).optional(),
+});
+
+const reviewDesignSchema = z.object({
+  problem: z.string().min(1),
+  desiredOutcome: z.string().min(1),
+  nonGoals: z.array(z.string().min(1)),
+  decisions: z.array(z.object({
+    id: z.string().min(1),
+    title: z.string().min(1),
+    rationale: z.string().min(1),
+    alternatives: z.array(z.string().min(1)),
+    status: z.enum(["accepted", "revised"]),
+  })),
+  invariants: z.array(z.object({
+    id: z.string().min(1),
+    statement: z.string().min(1),
+    importance: z.enum(["must", "should"]),
+  })).min(1),
+  acceptanceCriteria: z.array(z.object({
+    id: z.string().min(1),
+    statement: z.string().min(1),
+    status: z.enum(["verified", "unverified"]),
+    evidence: z.array(reviewEvidenceSchema),
+  })).min(1),
+  deviations: z.array(z.string().min(1)),
 });
 
 export const notExecutedTestSchema = z.object({
@@ -48,7 +81,7 @@ export const reviewSectionSchema = z.object({
 });
 
 export const reviewDocumentSchema = z.object({
-  schemaVersion: z.literal("1.0"),
+  schemaVersion: z.enum(["1.0", "2.0"]),
   project: z.object({ name: z.string().min(1), root: z.string() }),
   review: z.object({ id: z.string().min(1), title: z.string().min(1), summary: z.string().min(1), originalTask: z.string(), generatedAt: z.iso.datetime({ offset: true }) }),
   git: z.object({
@@ -66,10 +99,49 @@ export const reviewDocumentSchema = z.object({
     filesChanged: z.number().int().nonnegative(), filesAdded: z.number().int().nonnegative().optional(), filesModified: z.number().int().nonnegative().optional(), filesDeleted: z.number().int().nonnegative().optional(), filesRenamed: z.number().int().nonnegative().optional(), additions: z.number().int().nonnegative(), deletions: z.number().int().nonnegative(), sections: z.number().int().nonnegative().optional(), testsChanged: z.number().int().nonnegative().optional(),
   }),
   sections: z.array(reviewSectionSchema).min(1),
+  design: reviewDesignSchema.optional(),
   tests: z.object({ executed: z.array(executedTestSchema), notExecuted: z.array(notExecutedTestSchema) }),
   risks: z.array(reviewRiskSchema),
   assumptions: z.array(z.string()),
   completion: z.object({ status: z.enum(["complete", "partial", "blocked"]), summary: z.string(), remainingWork: z.array(z.string()) }),
+}).superRefine((review, context) => {
+  if (review.schemaVersion === "2.0" && !review.design) {
+    context.addIssue({ code: "custom", path: ["design"], message: "design is required for schema version 2.0" });
+  }
+
+  if (!review.design) return;
+  const designIds = [
+    ...review.design.decisions.map((decision) => decision.id),
+    ...review.design.invariants.map((invariant) => invariant.id),
+    ...review.design.acceptanceCriteria.map((criterion) => criterion.id),
+  ];
+  if (new Set(designIds).size !== designIds.length) {
+    context.addIssue({ code: "custom", path: ["design"], message: "design IDs must be unique" });
+  }
+  const invariantIds = new Set(review.design.invariants.map((invariant) => invariant.id));
+  const criterionIds = new Set(review.design.acceptanceCriteria.map((criterion) => criterion.id));
+  const referenceIds = new Set(review.sections.flatMap((section) => section.references.map((reference) => reference.id)));
+  const executedCommands = new Set(review.tests.executed.filter((test) => test.status !== "skipped").map((test) => test.command));
+  for (const test of review.tests.executed) {
+    for (const id of test.supports ?? []) {
+      if (!invariantIds.has(id) && !criterionIds.has(id)) {
+        context.addIssue({ code: "custom", path: ["tests", "executed"], message: `unknown supported design claim: ${id}` });
+      }
+    }
+  }
+  for (const criterion of review.design.acceptanceCriteria) {
+    if (criterion.status === "verified" && criterion.evidence.length === 0) {
+      context.addIssue({ code: "custom", path: ["design", "acceptanceCriteria"], message: `verified criterion ${criterion.id} requires evidence` });
+    }
+    for (const evidence of criterion.evidence) {
+      if (evidence.referenceId && !referenceIds.has(evidence.referenceId)) {
+        context.addIssue({ code: "custom", path: ["design", "acceptanceCriteria"], message: `unknown evidence reference: ${evidence.referenceId}` });
+      }
+      if (evidence.command && !executedCommands.has(evidence.command)) {
+        context.addIssue({ code: "custom", path: ["design", "acceptanceCriteria"], message: `evidence command was not executed successfully: ${evidence.command}` });
+      }
+    }
+  }
 });
 
 export function formatZodIssues(issues) {

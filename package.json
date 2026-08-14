@@ -30,6 +30,7 @@
     "CHANGELOG.md",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
+    "DESIGN.md",
     "LICENSE",
     "README.md",
     "SECURITY.md",
@@ -66,7 +67,6 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@tanstack/react-virtual": "^3.14.9",
     "@vitejs/plugin-react": "^5.0.0",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
