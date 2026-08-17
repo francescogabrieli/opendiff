@@ -4,6 +4,11 @@ All notable changes to OpenDiff are documented here. The project follows [Semant
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-08-17
+
+- Improve diff rendering and review interactions.
+- Optimize diff collection and stale-state detection.
+
 ## [0.2.0] - 2026-08-14
 
 ### Added
