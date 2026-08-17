@@ -63,11 +63,14 @@ function normalizeLine(line: Partial<DiffLine>, index: number): DiffLine {
   };
 }
 
-function referenceFileMatches(reference: ReviewReference, file: Partial<DiffFile>): boolean {
-  return reference.file === file.path || reference.file === file.previousPath;
-}
+type PreparedFile = {
+  rawFile: Partial<DiffFile>;
+  fileIndex: number;
+  lines: DiffLine[];
+  newLineNumbers: Set<number>;
+};
 
-function resolveReference(reference: ReviewReference, file: Partial<DiffFile> | undefined): ReviewReference {
+function resolveReference(reference: ReviewReference, file: PreparedFile | undefined): ReviewReference {
   if (!file) {
     return {
       ...reference,
@@ -75,9 +78,14 @@ function resolveReference(reference: ReviewReference, file: Partial<DiffFile> | 
       resolutionError: `The referenced file is not present in the current diff: ${reference.file}`,
     };
   }
-  const matchingLines = (file.lines ?? []).map(normalizeLine).filter((line) => line.newLine !== undefined);
-  const hasRange = matchingLines.some((line) => line.newLine !== undefined && line.newLine >= reference.newLines.start && line.newLine <= reference.newLines.end);
-  if (!hasRange && file.status !== "binary") {
+  let hasRange = false;
+  for (let lineNumber = reference.newLines.start; lineNumber <= reference.newLines.end; lineNumber += 1) {
+    if (file.newLineNumbers.has(lineNumber)) {
+      hasRange = true;
+      break;
+    }
+  }
+  if (!hasRange && file.rawFile.status !== "binary") {
     return {
       ...reference,
       resolved: false,
@@ -87,44 +95,79 @@ function resolveReference(reference: ReviewReference, file: Partial<DiffFile> | 
   return { ...reference, resolved: true, resolutionError: undefined };
 }
 
+// This runs on the critical loading path, so it stays linear in the size of
+// the diff: every file's lines are normalized exactly once, and references
+// are grouped through maps instead of rescanning files/sections per line.
 function enrichDiff(review: ReviewData, rawFiles: Partial<DiffFile>[]): { files: DiffFile[]; validation: ReviewValidation } {
   const warnings: string[] = [];
   const unresolvedReferenceIds: string[] = [];
-  const allReferences = review.sections.flatMap((section) => section.references);
-  const resolvedReferences = allReferences.map((reference) => {
-    const file = rawFiles.find((candidate) => referenceFileMatches(reference, candidate));
-    const resolved = resolveReference(reference, file);
-    if (resolved.resolved === false) {
-      unresolvedReferenceIds.push(reference.id);
-      warnings.push(`${reference.id}: ${resolved.resolutionError}`);
+
+  const sectionIdByReferenceId = new Map<string, string>();
+  for (const section of review.sections) {
+    for (const reference of section.references) sectionIdByReferenceId.set(reference.id, section.id);
+  }
+
+  const preparedFiles: PreparedFile[] = rawFiles.map((rawFile, fileIndex) => {
+    const lines = (rawFile.lines ?? []).map((rawLine, lineIndex) => normalizeLine(rawLine, lineIndex));
+    const newLineNumbers = new Set<number>();
+    for (const line of lines) {
+      if (line.newLine !== undefined) newLineNumbers.add(line.newLine);
     }
-    return resolved;
+    return { rawFile, fileIndex, lines, newLineNumbers };
   });
 
-  const files = rawFiles.map((rawFile, fileIndex) => {
-    const fileReferences = resolvedReferences.filter((reference) => referenceFileMatches(reference, rawFile));
-    const sections = [...new Set(fileReferences.map((reference) => review.sections.find((section) => section.references.some((item) => item.id === reference.id))?.id).filter(Boolean) as string[])];
-    const lines = (rawFile.lines ?? []).map((rawLine, lineIndex) => {
-      const line = normalizeLine(rawLine, lineIndex);
-      const matchingReferences = fileReferences.filter((reference) => line.newLine !== undefined && line.newLine >= reference.newLines.start && line.newLine <= reference.newLines.end && reference.resolved !== false);
-      return {
-        ...line,
-        sectionIds: [...new Set([
-          ...(line.sectionIds ?? []),
-          ...matchingReferences.map((reference) => review.sections.find((section) => section.references.some((item) => item.id === reference.id))?.id).filter(Boolean) as string[],
-        ])],
-        referenceIds: [...new Set([...(line.referenceIds ?? []), ...matchingReferences.map((reference) => reference.id)])],
-      };
-    });
+  const fileByPath = new Map<string, PreparedFile>();
+  for (const prepared of preparedFiles) {
+    const { path, previousPath } = prepared.rawFile;
+    if (path && !fileByPath.has(path)) fileByPath.set(path, prepared);
+    if (previousPath && !fileByPath.has(previousPath)) fileByPath.set(previousPath, prepared);
+  }
+
+  const referencesByFileIndex = new Map<number, ReviewReference[]>();
+  for (const section of review.sections) {
+    for (const reference of section.references) {
+      const file = fileByPath.get(reference.file);
+      const resolved = resolveReference(reference, file);
+      if (resolved.resolved === false) {
+        unresolvedReferenceIds.push(reference.id);
+        warnings.push(`${reference.id}: ${resolved.resolutionError}`);
+      }
+      if (file) {
+        const list = referencesByFileIndex.get(file.fileIndex);
+        if (list) list.push(resolved);
+        else referencesByFileIndex.set(file.fileIndex, [resolved]);
+      }
+    }
+  }
+
+  const files = preparedFiles.map(({ rawFile, fileIndex, lines }) => {
+    const fileReferences = referencesByFileIndex.get(fileIndex) ?? [];
+    const sections = [...new Set(fileReferences.map((reference) => sectionIdByReferenceId.get(reference.id)).filter(Boolean) as string[])];
+    const annotatedLines = fileReferences.length
+      ? lines.map((line) => {
+          const matchingReferences = line.newLine === undefined
+            ? []
+            : fileReferences.filter((reference) => reference.resolved !== false && line.newLine! >= reference.newLines.start && line.newLine! <= reference.newLines.end);
+          if (!matchingReferences.length) return line;
+          return {
+            ...line,
+            sectionIds: [...new Set([
+              ...(line.sectionIds ?? []),
+              ...matchingReferences.map((reference) => sectionIdByReferenceId.get(reference.id)).filter(Boolean) as string[],
+            ])],
+            referenceIds: [...new Set([...(line.referenceIds ?? []), ...matchingReferences.map((reference) => reference.id)])],
+          };
+        })
+      : lines;
     return {
       id: rawFile.id ?? `generated-file-${fileIndex}`,
       path: rawFile.path ?? "unknown",
       language: rawFile.language ?? "Text",
       status: rawFile.status ?? "modified",
-      additions: rawFile.additions ?? lines.filter((line) => line.type === "addition").length,
-      deletions: rawFile.deletions ?? lines.filter((line) => line.type === "deletion").length,
+      additions: rawFile.additions ?? annotatedLines.filter((line) => line.type === "addition").length,
+      deletions: rawFile.deletions ?? annotatedLines.filter((line) => line.type === "deletion").length,
       sections,
-      lines,
+      lines: annotatedLines,
       previousPath: rawFile.previousPath,
       generated: rawFile.generated,
       lockfile: rawFile.lockfile,
@@ -242,21 +285,32 @@ async function fetchRenderedDocuments(contextLines: number): Promise<{ review: R
   const endpointReview = "/__opendiff/data/review";
   const endpointDiff = `/__opendiff/data/diff?context=${encodeURIComponent(contextLines)}`;
   try {
-    const review = await fetchJson<ReviewData>(endpointReview, "missing-review");
-    const diff = await fetchJson<DiffDocument>(endpointDiff, "missing-base");
-    let status: ReviewStatusDocument = {};
-    try { status = await fetchJson<ReviewStatusDocument>("/__opendiff/status", "unavailable"); } catch { /* status is optional */ }
-    return { review, diff, status };
+    // Fire both requests up front: the diff is the slow one and the review
+    // document is tiny, so they should never load in a serial waterfall.
+    const [reviewResult, diffResult] = await Promise.allSettled([
+      fetchJson<ReviewData>(endpointReview, "missing-review"),
+      fetchJson<DiffDocument>(endpointDiff, "missing-base"),
+    ]);
+    if (reviewResult.status === "rejected") throw reviewResult.reason;
+    if (diffResult.status === "rejected") throw diffResult.reason;
+    // The diff endpoint already reports staleness from the fingerprint it
+    // just computed, so no extra /__opendiff/status round-trip (which would
+    // collect the whole diff a second time) is needed here.
+    return { review: reviewResult.value, diff: diffResult.value, status: {} };
   } catch (endpointError) {
     if (endpointError instanceof ReviewLoadError && endpointError.detail === "missing-review") throw endpointError;
     if (endpointError instanceof ReviewLoadError && endpointError.detail === "missing-base") throw endpointError;
     if (endpointError instanceof ReviewLoadError && endpointError.kind === "invalid-json") throw endpointError;
+    const [reviewResult, diffResult, statusResult] = await Promise.allSettled([
+      fetchJson<ReviewData>("/data/review.json", "missing-review"),
+      fetchJson<DiffDocument>("/data/diff.json", "missing-base"),
+      fetchJson<ReviewStatusDocument>("/data/status.json", "unavailable"),
+    ]);
     try {
-      const review = await fetchJson<ReviewData>("/data/review.json", "missing-review");
-      const diff = await fetchJson<DiffDocument>("/data/diff.json", "missing-base");
-      let status: ReviewStatusDocument = {};
-      try { status = await fetchJson<ReviewStatusDocument>("/data/status.json", "unavailable"); } catch { /* status is optional */ }
-      return { review, diff, status };
+      if (reviewResult.status === "rejected") throw reviewResult.reason;
+      if (diffResult.status === "rejected") throw diffResult.reason;
+      const status = statusResult.status === "fulfilled" ? statusResult.value : {};
+      return { review: reviewResult.value, diff: diffResult.value, status };
     } catch (staticError) {
       if (staticError instanceof ReviewLoadError) throw staticError;
       if (endpointError instanceof ReviewLoadError) throw endpointError;
@@ -295,7 +349,9 @@ export async function loadReviewBundle(options: LoadOptions = {}): Promise<Revie
   const enriched = enrichDiff(review, diffDocument.files);
   const warnings = [...enriched.validation.warnings];
   if (enriched.files.length === 0) warnings.unshift("No code changes were found between the selected base and the working tree.");
-  const stale = status.stale ?? Boolean(status.currentFingerprint && status.fingerprint && status.currentFingerprint !== status.fingerprint);
+  const recordedFingerprint = diffDocument.recordedFingerprint ?? status.fingerprint ?? null;
+  const currentFingerprint = diffDocument.fingerprint ?? status.currentFingerprint;
+  const stale = diffDocument.stale ?? status.stale ?? Boolean(recordedFingerprint && currentFingerprint && recordedFingerprint !== currentFingerprint);
   return {
     review: annotateReview(review, { ...enriched.validation, warnings: [...new Set(warnings)] }),
     diff: { files: enriched.files, fingerprint: diffDocument.fingerprint, stats: diffDocument.stats },

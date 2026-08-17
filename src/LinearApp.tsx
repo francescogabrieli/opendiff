@@ -403,8 +403,8 @@ function DiffFileCard({
           <span className="lg-file-path">{file.path}</span>
         </button>
         <div className="lg-file-stats">
-          <span className="lg-additions">+{file.additions}</span>
-          <span className="lg-deletions">−{file.deletions}</span>
+          {file.additions ? <span className="lg-additions">+{file.additions}</span> : null}
+          {file.deletions ? <span className="lg-deletions">−{file.deletions}</span> : null}
           <button
             type="button"
             className={`lg-reviewed ${reviewed ? "is-reviewed" : ""}`}
@@ -496,8 +496,9 @@ function DesignOverview({ review, onOpenEvidence }: { review: ReviewBundle["revi
         <span>Design</span>
         <h1 id="design-overview-title">Own the model before reading the code</h1>
         <p>{design.problem}</p>
-        <div className="lg-design-outcome"><Target size={15} /><div><strong>Desired outcome</strong><p>{design.desiredOutcome}</p></div></div>
       </header>
+
+      <div className="lg-design-outcome"><Target size={15} /><div><strong>Desired outcome</strong><p>{design.desiredOutcome}</p></div></div>
 
       <div className="lg-design-grid">
         <section className="lg-design-card">
@@ -796,7 +797,17 @@ function ReviewGuide({
           <span className="lg-top-additions">+{review.stats.additions}</span>
           <span className="lg-top-deletions">−{review.stats.deletions}</span>
           <IconButton label={starred ? "Unstar review" : "Star review"} onClick={() => setStarred((value) => !value)} active={starred}><Star size={14} fill={starred ? "currentColor" : "none"} /></IconButton>
-          <IconButton label="More review actions" onClick={() => setTechnicalOpen((value) => !value)} active={technicalOpen}><MoreHorizontal size={15} /></IconButton>
+          <span className="lg-tech-anchor">
+            <IconButton label="More review actions" onClick={() => setTechnicalOpen((value) => !value)} active={technicalOpen}><MoreHorizontal size={15} /></IconButton>
+            {technicalOpen ? (
+              <aside className="lg-technical-popover">
+                <div><span>Base commit</span><code>{review.git.baseCommit}</code></div>
+                <div><span>Target</span><code>{review.git.targetRef}</code></div>
+                <div><span>Schema</span><code>{review.schemaVersion}</code></div>
+                <div><span>Changes</span><code>+{review.stats.additions} −{review.stats.deletions}</code></div>
+              </aside>
+            ) : null}
+          </span>
         </div>
         <div className="lg-topbar-actions">
           <IconButton label="Copy review link" onClick={() => void copyText(window.location.href, "Review link copied")}><Link2 size={14} /></IconButton>
@@ -829,22 +840,24 @@ function ReviewGuide({
                 <button type="button" className={diffMode === "split" ? "is-active" : ""} disabled={!splitAvailable} title={splitAvailable ? "Split view (⌘B)" : "Split view requires a wider window"} onClick={() => setDiffMode("split")}>Split</button>
                 <button type="button" className={diffMode === "unified" ? "is-active" : ""} onClick={() => setDiffMode("unified")}>Unified</button>
               </div>
-              <div className="lg-settings-row"><span>Context lines</span><button type="button" className="lg-context-trigger" data-testid="context-control" onClick={() => changeContextLines(contextLines === 8 ? 3 : contextLines + 2)}>{contextLines} <ChevronDown size={12} /></button></div>
-              <div className="lg-context-options" role="menu" aria-label="Context lines">
-                {[3, 5, 8].map((value) => (
-                  <button
-                    type="button"
-                    role="menuitemradio"
-                    aria-checked={contextLines === value}
-                    key={value}
-                    className={contextLines === value ? "is-active" : ""}
-                    onClick={() => {
-                      changeContextLines(value);
-                    }}
-                  >
-                    {value} lines {contextLines === value ? <Check size={12} /> : null}
-                  </button>
-                ))}
+              <div className="lg-settings-group">
+                <span className="lg-settings-label" id="lg-context-label">Context lines</span>
+                <div className="lg-context-options" role="menu" aria-labelledby="lg-context-label">
+                  {[3, 5, 8].map((value) => (
+                    <button
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={contextLines === value}
+                      key={value}
+                      className={contextLines === value ? "is-active" : ""}
+                      onClick={() => {
+                        changeContextLines(value);
+                      }}
+                    >
+                      {value} lines
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="lg-settings-row"><span>Structural highlighting</span><button type="button" role="switch" aria-label="Structural highlighting" aria-checked={structuralHighlighting} className={`lg-toggle ${structuralHighlighting ? "is-on" : ""}`} onClick={() => setStructuralHighlighting((value) => !value)}><span /></button></div>
               <div className="lg-settings-row"><span>Wrap lines</span><button type="button" role="switch" aria-label="Wrap lines" aria-checked={wrapLines} className={`lg-toggle ${wrapLines ? "is-on" : ""}`} onClick={() => setWrapLines((value) => !value)}><span /></button></div>
@@ -978,15 +991,6 @@ function ReviewGuide({
           </>
         )}
       </main>
-
-      {technicalOpen ? (
-        <aside className="lg-technical-popover">
-          <div><span>Base commit</span><code>{review.git.baseCommit}</code></div>
-          <div><span>Target</span><code>{review.git.targetRef}</code></div>
-          <div><span>Schema</span><code>{review.schemaVersion}</code></div>
-          <div><span>Changes</span><code>+{review.stats.additions} −{review.stats.deletions}</code></div>
-        </aside>
-      ) : null}
 
       {toast ? <div className="lg-toast"><CircleCheck size={14} /> {toast}</div> : null}
     </div>

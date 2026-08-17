@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Writable } from "node:stream";
 import test from "node:test";
-import { createStaticHandler } from "../cli/server.mjs";
+import { createHandler, createStaticHandler } from "../cli/server.mjs";
 
 class MockResponse extends Writable {
   statusCode = 200;
@@ -63,4 +64,43 @@ test("rejects unsupported methods", async () => {
 test("does not serve files outside the renderer root", async () => {
   const response = await request(createRenderer(), "GET", "/%2e%2e%2fsecret.txt");
   assert.equal(response.statusCode, 403);
+});
+
+function createRepositoryWithReview(fingerprint) {
+  const root = mkdtempSync(join(tmpdir(), "opendiff-data-"));
+  const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8" });
+  git("init", "-q");
+  git("config", "user.email", "opendiff-tests@example.com");
+  git("config", "user.name", "OpenDiff tests");
+  writeFileSync(join(root, "file.ts"), "export const value = 1;\n");
+  git("add", ".");
+  git("commit", "-qm", "base");
+  writeFileSync(join(root, "file.ts"), "export const value = 2;\n");
+  mkdirSync(join(root, ".opendiff"));
+  writeFileSync(join(root, ".opendiff", "review.json"), JSON.stringify({
+    git: { baseRef: "HEAD", fingerprint, includeStaged: true, includeUnstaged: true, includeUntracked: true },
+  }));
+  return root;
+}
+
+test("the diff endpoint reports staleness from the fingerprint it computed", async () => {
+  const handler = createHandler(createRepositoryWithReview("recorded-fingerprint"));
+  const response = await request(handler, "GET", "/__opendiff/data/diff?context=5");
+  assert.equal(response.statusCode, 200);
+  const body = JSON.parse(response.body);
+  assert.equal(body.files.length, 1);
+  assert.equal(body.files[0].path, "file.ts");
+  assert.equal(body.files[0].oldSize, Buffer.byteLength("export const value = 1;\n"));
+  assert.equal(body.recordedFingerprint, "recorded-fingerprint");
+  assert.equal(body.stale, true);
+  assert.equal(typeof body.fingerprint, "string");
+});
+
+test("the diff endpoint is not stale without a recorded fingerprint", async () => {
+  const handler = createHandler(createRepositoryWithReview(""));
+  const response = await request(handler, "GET", "/__opendiff/data/diff?context=5");
+  assert.equal(response.statusCode, 200);
+  const body = JSON.parse(response.body);
+  assert.equal(body.recordedFingerprint, null);
+  assert.equal(body.stale, false);
 });

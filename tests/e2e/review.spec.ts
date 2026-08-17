@@ -108,8 +108,8 @@ test.describe("OpenDiff guided review", () => {
     await page.getByRole("button", { name: "Diff display settings" }).click();
     await page.getByRole("menuitemradio", { name: "8 lines" }).click();
 
-    await expect(page.getByTestId("context-control")).toContainText("8");
     await expect(page.getByRole("menuitemradio", { name: "8 lines" })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByRole("menuitemradio", { name: "5 lines" })).toHaveAttribute("aria-checked", "false");
   });
 
   test("switches to a split diff and toggles line wrapping", async ({ page }) => {

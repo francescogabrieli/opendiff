@@ -126,8 +126,13 @@ export function collectDiff({ root, base = "HEAD", context = 5, includeStaged = 
     }
   }
 
-  const files = parseDiff(diffText)
-    .filter((file) => !matchesAnyPath(file.path, ignoredPaths))
+  const parsedFiles = parseDiff(diffText).filter((file) => !matchesAnyPath(file.path, ignoredPaths));
+  // Resolve every oldSize with a single Git invocation instead of one
+  // `git cat-file` process per file, which dominates on large diffs.
+  const oldSizes = parsedFiles.some((file) => !untrackedPaths.has(file.path) && file.status !== "added")
+    ? gitFileSizes(root, base)
+    : new Map();
+  const files = parsedFiles
     .map((file) => {
       const status = untrackedPaths.has(file.path) ? "added" : file.status;
       const previousPath = status === "added" ? undefined : file.previousPath;
@@ -139,7 +144,7 @@ export function collectDiff({ root, base = "HEAD", context = 5, includeStaged = 
         generated: matchesAnyPath(file.path, generatedPaths),
         binary: file.status === "binary" || isBinaryPath(file.path),
         previousPath,
-        oldSize: status === "added" ? undefined : previousPath ? gitFileSize(root, base, previousPath) : gitFileSize(root, base, file.path),
+        oldSize: status === "added" ? undefined : oldSizes.get(previousPath ?? file.path),
         newSize: status === "deleted" ? undefined : workingFileSize(root, file.path),
       };
     });
@@ -155,12 +160,24 @@ function workingFileSize(root, path) {
   try { return statSync(join(root, path)).size; } catch { return undefined; }
 }
 
-function gitFileSize(root, ref, path) {
+function gitFileSizes(root, ref) {
+  const sizes = new Map();
+  let output;
   try {
-    return Number(runGit(root, ["cat-file", "-s", `${ref}:${path}`], { silent: true }).trim()) || undefined;
+    output = runGit(root, ["ls-tree", "-r", "-l", "-z", ref, "--"], { silent: true });
   } catch {
-    return undefined;
+    return sizes;
   }
+  for (const entry of output.split("\0")) {
+    if (!entry) continue;
+    // Entries look like "<mode> <type> <object> <size>\t<path>".
+    const tab = entry.indexOf("\t");
+    if (tab === -1) continue;
+    const meta = entry.slice(0, tab).trim().split(/\s+/);
+    const size = Number(meta[3]);
+    if (meta[1] === "blob" && Number.isFinite(size)) sizes.set(entry.slice(tab + 1), size);
+  }
+  return sizes;
 }
 
 export function calculateDiffStats(files) {

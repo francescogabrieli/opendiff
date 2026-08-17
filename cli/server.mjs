@@ -63,10 +63,16 @@ export function createHandler(root) {
           ignoredPaths: config.ignoredPaths,
           generatedPaths: config.generatedPaths,
         });
+        // Reuse the fingerprint we just computed to report staleness, so the
+        // renderer does not need a second full diff via /__opendiff/status.
+        const renderedStatus = readDocument(renderStatusPath) || {};
+        const recorded = renderedStatus.fingerprint || review.git?.fingerprint || null;
         json(res, 200, {
           files: collected.files,
           stats: collected.stats,
           fingerprint: collected.fingerprint,
+          recordedFingerprint: recorded,
+          stale: Boolean(recorded && collected.fingerprint !== recorded),
           baseRef: base,
           baseCommit: getBaseCommit(root, base),
           renderedAt: new Date().toISOString(),
