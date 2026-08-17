@@ -163,6 +163,8 @@ export type DiffDocument = {
     deletions: number;
   };
   fingerprint?: string;
+  recordedFingerprint?: string | null;
+  stale?: boolean;
   renderedAt?: string;
   baseRef?: string;
   baseCommit?: string;
