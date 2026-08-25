@@ -1,18 +1,19 @@
 {
-  "name": "@francescogabrieli/opendiff",
-  "version": "0.2.1",
+  "name": "@opendiff/cli",
+  "version": "0.3.0",
   "type": "module",
-  "description": "Local, guided code reviews for changes made by coding agents.",
+  "description": "Review code you did not write. Local, guided reviews for agent-generated changes.",
   "license": "MIT",
   "keywords": [
     "ai-agents",
+    "code-review",
     "codex",
     "claude-code",
-    "code-review",
     "developer-tools",
     "diff",
     "git",
-    "local-first"
+    "local-first",
+    "review"
   ],
   "homepage": "https://github.com/francescogabrieli/opendiff#readme",
   "bugs": {
@@ -39,6 +40,7 @@
     "cli/",
     "dist/index.html",
     "dist/assets/",
+    "dist-share/opendiff-share.html",
     "docs/",
     "examples/",
     "schemas/",
@@ -52,7 +54,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && vite build --config vite.share.config.ts",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "npm run typecheck && npm run test:unit",
@@ -61,7 +63,10 @@
     "check": "npm test && npm run build",
     "package:check": "npm pack --dry-run",
     "prepack": "npm run check",
-    "opendiff": "node ./cli/opendiff.mjs"
+    "opendiff": "node ./cli/opendiff.mjs",
+    "build:app": "vite build",
+    "build:share": "vite build --config vite.share.config.ts",
+    "release:preflight": "node scripts/preflight-release.mjs"
   },
   "dependencies": {
     "zod": "^4.4.3"

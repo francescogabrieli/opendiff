@@ -2,7 +2,7 @@
 
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, relative, resolve } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync, spawn } from "node:child_process";
 import { createServer as createHttpServer } from "node:http";
@@ -14,6 +14,9 @@ import {
   loadConfig as loadGitConfig,
 } from "./git.mjs";
 import { formatZodIssues, reviewDocumentSchema } from "./schema.mjs";
+import { synthesizeReview } from "./synthesize.mjs";
+import { buildSharedHtml, DEFAULT_SHARE_FILENAME, gistAvailable, shareTemplatePath, uploadGist } from "./share.mjs";
+import { createInterface } from "node:readline/promises";
 
 const root = process.cwd();
 const packageRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -26,28 +29,36 @@ const renderDir = join(agentDir, "render");
 const defaultConfig = gitDefaultConfig;
 
 function printHelp() {
-  console.log(`OpenDiff — local guided reviews
+  console.log(`OpenDiff — review code you did not write
 
 Usage:
+  opendiff                    Open the current working-tree change
   opendiff <command> [options]
 
 Commands:
+  review                Open the review (guided when an agent recorded one)
+  share                 Write a single self-contained HTML file of the review
   init                  Create .opendiff/config.json
-  skill install         Install the OpenDiff skill for Codex
+  skill install         Install the OpenDiff skill for Codex and Claude Code
   validate              Validate review.json and its diff references
   render                Materialize review and the real Git diff for the web app
   open                  Start the local renderer and print the URL
-  review                Validate, render, and open the review
   export --output PATH  Export a portable review folder
 
 Options:
   --base REF            Diff base (default: HEAD)
   --context N           Context lines (default: 5)
   --port PORT           Server port (default: 4173)
+  --output PATH         Destination for share and export
+  --gist                Upload the shared HTML as a GitHub Gist (asks first)
   --no-open             Do not open a browser
+  --yes                 Skip the confirmation prompt for --gist
   --force               Replace an existing installed skill
   --version             Print the installed OpenDiff version
   --help                Show this help
+
+Running opendiff with no arguments works in any Git repository. Design and
+evidence appear once a coding agent records them with the @opendiff skill.
 `);
 }
 
@@ -89,7 +100,7 @@ function readJson(path) {
 }
 
 function getOptions(argv) {
-  const options = { base: null, context: null, port: 4173, open: true, output: null, force: false };
+  const options = { base: null, context: null, port: 4173, open: true, output: null, force: false, gist: false, yes: false };
   const valueAfter = (option, index) => {
     const value = argv[index + 1];
     if (!value || value.startsWith("--")) throw new Error(`${option} requires a value.`);
@@ -103,6 +114,8 @@ function getOptions(argv) {
     else if (arg === "--output") options.output = valueAfter(arg, index++);
     else if (arg === "--no-open") options.open = false;
     else if (arg === "--force") options.force = true;
+    else if (arg === "--gist") options.gist = true;
+    else if (arg === "--yes" || arg === "-y") options.yes = true;
     else if (arg === "install" && index === 0) continue;
     else throw new Error(`Unknown option or argument “${arg}”. Run opendiff --help.`);
   }
@@ -120,7 +133,9 @@ function collectDiff(options = {}) {
     includeStaged: options.includeStaged ?? config.includeStaged,
     includeUnstaged: options.includeUnstaged ?? config.includeUnstaged,
     includeUntracked: options.includeUntracked ?? config.includeUntracked,
-    ignoredPaths: config.ignoredPaths,
+    // Excluded paths have to be invisible to the collector, not filtered out
+    // afterwards, or the statistics and title would still count them.
+    ignoredPaths: [...config.ignoredPaths, ...(options.exclude ?? [])],
     generatedPaths: config.generatedPaths,
   });
 }
@@ -154,9 +169,34 @@ function ensureAgentArtifactsIgnored() {
   return true;
 }
 
-function validateReview({ reportOnly = false, options = {} } = {}) {
+// Level 0: without a recorded review OpenDiff still has everything it needs
+// to show the real change, so it reports the diff instead of refusing.
+function diffOnlyReview(options = {}) {
+  const config = loadConfig();
+  const base = options.base || config.baseRef || "HEAD";
+  const context = Number.isFinite(options.context) && options.context > 0 ? options.context : Number(config.defaultContextLines) || 5;
+  let collected;
+  try {
+    getBaseCommit(root, base);
+    collected = collectDiff({ base, context, exclude: options.exclude });
+  } catch {
+    return fail(`The Git base “${base}” is unavailable in this repository.`);
+  }
+  const document = synthesizeReview({ root, base, collected });
+  const warnings = [];
+  if (!collected.files.length) warnings.push("No code changes were found between the selected base and the working tree.");
+  console.log(`OpenDiff diff-only review: ${document.review.title}`);
+  console.log(`  ${collected.files.length} diff files · no recorded design or evidence`);
+  warnings.forEach((warning) => console.log(`  Warning: ${warning}`));
+  return { document, collected, errors: [], warnings, unresolvedReferenceIds: [], base, context, diffOnly: true };
+}
+
+function validateReview({ reportOnly = false, options = {}, allowDiffOnly = false } = {}) {
   if (!getGitRoot()) return fail("OpenDiff could not find a Git repository from the current directory. Run the command inside a repository.");
-  if (!existsSync(reviewPath)) return fail("No OpenDiff review was found. Ask the coding agent to generate .opendiff/review.json.");
+  if (!existsSync(reviewPath)) {
+    if (allowDiffOnly) return diffOnlyReview(options);
+    return fail("No OpenDiff review was found. Ask the coding agent to generate .opendiff/review.json.");
+  }
   ensureAgentArtifactsIgnored();
 
   let rawDocument;
@@ -188,6 +228,7 @@ function validateReview({ reportOnly = false, options = {} } = {}) {
     collected = collectDiff({
       base,
       context,
+      exclude: options.exclude,
       includeStaged: document.git.includeStaged,
       includeUnstaged: document.git.includeUnstaged,
       includeUntracked: document.git.includeUntracked,
@@ -241,7 +282,7 @@ function init() {
   console.log(`${createdConfig ? "Created" : "Using existing"} ${relative(root, configPath)}`);
   if (ignoredArtifacts) console.log("Configured .opendiff/ artifacts to remain local and untracked");
   console.log("Install the agent instruction with: opendiff skill install");
-  console.log("Generate .opendiff/review.json with the OpenDiff skill, then run npx --yes @francescogabrieli/opendiff@latest review.");
+  console.log("Generate .opendiff/review.json with the OpenDiff skill, then run npx --yes @opendiff/cli@latest review.");
 }
 
 function render(options) {
@@ -327,7 +368,7 @@ async function openServer(options) {
 }
 
 function exportReview(options) {
-  const result = validateReview({ reportOnly: true, options });
+  const result = validateReview({ reportOnly: true, options, allowDiffOnly: true });
   if (!result || result.errors.length) return fail("The review cannot be exported until the blocking validation errors are fixed.");
   const output = resolve(root, options.output || "opendiff-export");
   if (!existsSync(join(rendererRoot, "index.html"))) return fail("The bundled renderer is missing. Run `npm run build` in the OpenDiff checkout and try again.");
@@ -342,7 +383,79 @@ function exportReview(options) {
   console.log(`Exported review data to ${relative(root, output)}`);
 }
 
-const [command = "help", ...argv] = process.argv.slice(2);
+async function confirm(question) {
+  if (!process.stdin.isTTY) return false;
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = await rl.question(`${question} [y/N] `);
+    return /^y(es)?$/i.test(answer.trim());
+  } finally {
+    rl.close();
+  }
+}
+
+async function shareReview(options) {
+  // The shared file is usually written inside the repository, where it would
+  // show up as an untracked change and be embedded into the next share. It has
+  // to be excluded before the diff is collected, so it never reaches the
+  // statistics, the title, or the fingerprint.
+  const output = resolve(root, options.output || DEFAULT_SHARE_FILENAME);
+  const excluded = relative(root, output).split(sep).join("/");
+  const collectOptions = { ...options, exclude: excluded.startsWith("..") ? [] : [excluded] };
+
+  const result = validateReview({ reportOnly: true, options: collectOptions, allowDiffOnly: true });
+  if (!result || result.errors.length) return fail("The review cannot be shared until the blocking validation errors are fixed.");
+
+  const stats = result.collected.stats;
+  const reviewDocument = {
+    ...result.document,
+    stats: { ...result.document.stats, ...stats, sections: result.document.sections.length },
+    git: { ...result.document.git, baseRef: result.base, fingerprint: result.collected.fingerprint },
+  };
+  const files = attachReviewReferences(reviewDocument, result.collected.files);
+  const html = buildSharedHtml({
+    templatePath: shareTemplatePath(packageRoot),
+    review: reviewDocument,
+    diff: {
+      files,
+      stats,
+      fingerprint: result.collected.fingerprint,
+      baseRef: result.base,
+      baseCommit: getBaseCommit(root, result.base),
+      renderedAt: new Date().toISOString(),
+    },
+    mode: result.diffOnly ? "diff-only" : "guided",
+  });
+
+  writeFileSync(output, html);
+  const sizeMb = (Buffer.byteLength(html) / 1024 / 1024).toFixed(2);
+  console.log(`Wrote ${relative(root, output)} (${sizeMb} MB, self-contained)`);
+  console.log("Open it in any browser, attach it to a pull request, or send it as a file.");
+
+  if (!options.gist) return;
+
+  if (!gistAvailable()) {
+    return fail("--gist needs the GitHub CLI, authenticated. Install gh and run `gh auth login`, or share the file directly.");
+  }
+  // Creating a Gist uploads the diff — including source code — to GitHub, so it
+  // never happens without the user saying so in this run.
+  console.log("");
+  console.log("Creating a Gist uploads this review, including the source code in the diff, to GitHub.");
+  const approved = options.yes || await confirm("Upload it now?");
+  if (!approved) {
+    console.log("Skipped the Gist upload. The local file is unchanged.");
+    return;
+  }
+  const url = uploadGist(output, reviewDocument.review.title);
+  console.log(`Uploaded to ${url}`);
+}
+
+const KNOWN_COMMANDS = new Set(["help", "--help", "-h", "--version", "-v", "version", "init", "skill", "validate", "render", "open", "review", "export", "share"]);
+
+// `opendiff` with no command, or with only options, opens the current change.
+const rawArgs = process.argv.slice(2);
+const command = rawArgs.length && KNOWN_COMMANDS.has(rawArgs[0]) ? rawArgs[0] : "review";
+const argv = command === rawArgs[0] ? rawArgs.slice(1) : rawArgs;
 
 try {
   const options = getOptions(argv);
@@ -353,16 +466,19 @@ try {
   else if (command === "validate") validateReview({ options });
   else if (command === "render") render(options);
   else if (command === "open") {
-    const result = validateReview({ options });
+    const result = validateReview({ options, allowDiffOnly: true });
     if (result && !result.errors.length) await openServer(options);
   }
   else if (command === "review") {
-    const result = validateReview({ options });
+    const result = validateReview({ options, allowDiffOnly: true });
     if (result && !result.errors.length) {
-      render(options);
+      // A diff-only review is computed live by the server, so there is no
+      // recorded narrative to materialize under .opendiff/render.
+      if (!result.diffOnly) render(options);
       await openServer(options);
     }
   } else if (command === "export") exportReview(options);
+  else if (command === "share") await shareReview(options);
   else fail(`Unknown command “${command}”. Run opendiff --help.`);
 } catch (error) {
   fail(error.message || String(error));

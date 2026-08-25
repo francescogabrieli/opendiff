@@ -2,25 +2,46 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node.js 20.19+](https://img.shields.io/badge/node-%3E%3D20.19-339933.svg)](package.json)
-[![npm](https://img.shields.io/npm/v/%40francescogabrieli%2Fopendiff.svg)](https://www.npmjs.com/package/@francescogabrieli/opendiff)
+[![npm](https://img.shields.io/npm/v/%40opendiff%2Fcli.svg)](https://www.npmjs.com/package/@opendiff/cli)
 
-OpenDiff turns a coding agent's working-tree changes into a local, idea-first review. The same agent records the design and evidence; OpenDiff validates them against the real Git diff and lets you inspect code on demand.
+**Review code you did not write.**
+
+A raw diff tells you what changed, but not whether the design is sound, which invariants matter, which claims have evidence, or where uncertainty remains. OpenDiff turns a change into something you can actually read — and, when a coding agent recorded the reasoning behind it, into a review of that reasoning against the real Git diff.
 
 ![OpenDiff guided review](docs/opendiff-demo.gif)
 
 OpenDiff is **local-first** and **deterministic**. It does not upload source code, call an additional model, create a pull request, or modify source files or Git state. Local review artifacts remain ignored under `.opendiff/`.
 
-## Why use OpenDiff?
+## Try it now
 
-Agent-generated changes are often easier to produce than to understand. A raw diff tells you what changed, but not whether the design is sound, which invariants matter, which claims have evidence, or where uncertainty remains.
+In any Git repository, with no account, no API key, and nothing installed:
 
-OpenDiff gives you three connected views:
+```bash
+npx --yes @opendiff/cli@latest
+```
 
-- **Design** explains the problem, desired outcome, decisions, alternatives, invariants, non-goals, and deviations.
-- **Evidence** connects acceptance criteria to tests, checks, risks, and precise implementation references.
-- **Diff** provides the complete staged, unstaged, and untracked Git change for line-level inspection.
+That opens the current working-tree change in your browser. Nothing else is required.
 
-OpenDiff also detects stale reviews when the working tree changes after the review was generated.
+## Two levels
+
+**Level 0 — any repository.** `opendiff` reads the working tree and shows the change: staged, unstaged, and untracked, with syntax highlighting, split or unified layout, adjustable context, and per-file review state.
+
+**Level 1 — guided.** Install the skill, and the coding agent that makes a change also records the design and evidence behind it. OpenDiff then validates those claims against the real diff and adds two views:
+
+- **Design** — the problem, desired outcome, decisions, alternatives, invariants, non-goals, and deviations.
+- **Evidence** — acceptance criteria tied to tests, checks, risks, and precise implementation references.
+
+OpenDiff clearly distinguishes verified criteria from claims without evidence, executed checks from skipped ones, current reviews from ones made stale by later changes, and resolved code references from missing ones.
+
+## Share a review
+
+```bash
+opendiff share
+```
+
+This writes a single self-contained HTML file — every script, style, and syntax grammar inlined, no network access required. Open it from disk, attach it to a pull request, or send it to someone who has neither the repository nor OpenDiff.
+
+To publish it as a GitHub Gist instead, add `--gist`. Because that uploads the diff, including your source code, to GitHub, OpenDiff asks for confirmation first and never uploads without an explicit yes.
 
 ## Requirements
 
@@ -30,20 +51,20 @@ OpenDiff also detects stale reviews when the working tree changes after the revi
 
 No account, remote service, or API key is required.
 
-## Install
+## Install the guided level
 
-Install the OpenDiff skill once:
+Level 0 needs no installation. To unlock Design and Evidence, install the OpenDiff skill once:
 
 ```bash
-npx --yes @francescogabrieli/opendiff@latest install
+npx --yes @opendiff/cli@latest install
 ```
 
 The installer detects Codex and Claude Code automatically. To select one explicitly:
 
 ```bash
-npx --yes @francescogabrieli/opendiff@latest install --agent codex
-npx --yes @francescogabrieli/opendiff@latest install --agent claude
-npx --yes @francescogabrieli/opendiff@latest install --agent all
+npx --yes @opendiff/cli@latest install --agent codex
+npx --yes @opendiff/cli@latest install --agent claude
+npx --yes @opendiff/cli@latest install --agent all
 ```
 
 Restart an agent that was already open after installation.
@@ -85,6 +106,8 @@ The installed skill normally runs OpenDiff for you. These commands are available
 
 | Command | When to use it |
 | --- | --- |
+| `opendiff` | Open the current working-tree change. |
+| `opendiff share` | Write a single self-contained HTML file of the review. |
 | `opendiff doctor` | Check Node.js, Git, the bundled renderer, and agent installation. |
 | `opendiff review` | Validate and open the review in the current repository. |
 | `opendiff review --no-open` | Start the local review server without opening a browser. |
@@ -95,8 +118,8 @@ The installed skill normally runs OpenDiff for you. These commands are available
 When invoking commands without a global installation, use the npm package:
 
 ```bash
-npx --yes @francescogabrieli/opendiff@latest doctor
-npx --yes @francescogabrieli/opendiff@latest review
+npx --yes @opendiff/cli@latest doctor
+npx --yes @opendiff/cli@latest review
 ```
 
 ## Troubleshooting
@@ -106,8 +129,8 @@ npx --yes @francescogabrieli/opendiff@latest review
 Restart Codex or Claude Code after installation. If the problem continues:
 
 ```bash
-npx --yes @francescogabrieli/opendiff@latest doctor
-npx --yes @francescogabrieli/opendiff@latest install --force
+npx --yes @opendiff/cli@latest doctor
+npx --yes @opendiff/cli@latest install --force
 ```
 
 ### The browser does not open
@@ -115,7 +138,7 @@ npx --yes @francescogabrieli/opendiff@latest install --force
 Run the review without automatic browser launch:
 
 ```bash
-npx --yes @francescogabrieli/opendiff@latest review --no-open
+npx --yes @opendiff/cli@latest review --no-open
 ```
 
 Open the local URL printed by the command. Keep that terminal process running while reading the review.

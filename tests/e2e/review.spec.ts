@@ -221,4 +221,17 @@ test.describe("OpenDiff guided review", () => {
     await expect(page.getByTestId("load-error")).toBeVisible();
     await expect(page.getByRole("heading", { name: "No OpenDiff review was found" })).toBeVisible();
   });
+
+  test("shows only the diff, and how to get more, when no agent recorded a review", async ({ page }) => {
+    await page.goto("/?fixture=diffonly");
+
+    await expect(page.getByTestId("diff-view")).toBeVisible();
+    await expect(page.getByTestId("diff-only-banner")).toContainText("@opendiff");
+
+    // Design and Evidence must not be offered when nothing backs them.
+    await expect(page.getByRole("button", { name: "Diff", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("button", { name: "Design", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Evidence", exact: true })).toHaveCount(0);
+    await expect(page.locator('[data-testid^="diff-file-"]').first()).toBeVisible();
+  });
 });

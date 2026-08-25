@@ -6,6 +6,7 @@ import {
   getGitRoot,
   loadConfig,
 } from "./git.mjs";
+import { synthesizeReview } from "./synthesize.mjs";
 
 function json(res, status, value) {
   res.statusCode = status;
@@ -16,6 +17,23 @@ function json(res, status, value) {
 
 function readDocument(path) {
   try { return JSON.parse(readFileSync(path, "utf8")); } catch { return null; }
+}
+
+function diffOnlyReview(root, requestUrl) {
+  const config = loadConfig(root);
+  const base = requestUrl.searchParams.get("base") || config.baseRef;
+  const context = Number(requestUrl.searchParams.get("context")) || config.defaultContextLines || 5;
+  const collected = collectDiff({
+    root,
+    base,
+    context,
+    includeStaged: config.includeStaged,
+    includeUnstaged: config.includeUnstaged,
+    includeUntracked: config.includeUntracked,
+    ignoredPaths: config.ignoredPaths,
+    generatedPaths: config.generatedPaths,
+  });
+  return synthesizeReview({ root, base, collected });
 }
 
 export function createHandler(root) {
@@ -36,38 +54,41 @@ export function createHandler(root) {
     }
     if (requestUrl.pathname === "/__opendiff/data/review") {
       const review = readDocument(reviewPath);
-      if (!review) {
-        json(res, 404, { code: "missing-review", message: "No OpenDiff review was found. Ask the coding agent to generate .opendiff/review.json." });
+      if (review) {
+        json(res, 200, review);
         return;
       }
-      json(res, 200, review);
+      // Level 0: with no recorded review, serve a diff-only document so the
+      // renderer can still show the real Git change.
+      try {
+        json(res, 200, diffOnlyReview(root, requestUrl));
+      } catch (error) {
+        json(res, 422, { code: "missing-base", message: error.message || "The selected Git base is unavailable." });
+      }
       return;
     }
     if (requestUrl.pathname === "/__opendiff/data/diff") {
       const review = readDocument(reviewPath);
-      if (!review) {
-        json(res, 404, { code: "missing-review", message: "No OpenDiff review was found. Ask the coding agent to generate .opendiff/review.json." });
-        return;
-      }
       try {
         const config = loadConfig(root);
         const context = Number(requestUrl.searchParams.get("context")) || config.defaultContextLines || 5;
-        const base = requestUrl.searchParams.get("base") || review.git?.baseRef || config.baseRef;
+        const base = requestUrl.searchParams.get("base") || review?.git?.baseRef || config.baseRef;
         const collected = collectDiff({
           root,
           base,
           context,
-          includeStaged: review.git?.includeStaged !== false && config.includeStaged,
-          includeUnstaged: review.git?.includeUnstaged !== false && config.includeUnstaged,
-          includeUntracked: review.git?.includeUntracked !== false && config.includeUntracked,
+          includeStaged: review?.git?.includeStaged !== false && config.includeStaged,
+          includeUnstaged: review?.git?.includeUnstaged !== false && config.includeUnstaged,
+          includeUntracked: review?.git?.includeUntracked !== false && config.includeUntracked,
           ignoredPaths: config.ignoredPaths,
           generatedPaths: config.generatedPaths,
         });
         // Reuse the fingerprint we just computed to report staleness, so the
         // renderer does not need a second full diff via /__opendiff/status.
         const renderedStatus = readDocument(renderStatusPath) || {};
-        const recorded = renderedStatus.fingerprint || review.git?.fingerprint || null;
+        const recorded = renderedStatus.fingerprint || review?.git?.fingerprint || null;
         json(res, 200, {
+          mode: review ? "guided" : "diff-only",
           files: collected.files,
           stats: collected.stats,
           fingerprint: collected.fingerprint,
@@ -85,29 +106,26 @@ export function createHandler(root) {
     if (requestUrl.pathname === "/__opendiff/status") {
       const renderedStatus = readDocument(renderStatusPath) || {};
       const review = readDocument(reviewPath);
-      if (!review) {
-        json(res, 404, { code: "missing-review", message: "No OpenDiff review was found." });
-        return;
-      }
       try {
         const config = loadConfig(root);
-        const base = review.git?.baseRef || config.baseRef;
+        const base = review?.git?.baseRef || config.baseRef;
         const current = collectDiff({
           root,
           base,
           context: config.defaultContextLines,
-          includeStaged: review.git?.includeStaged !== false && config.includeStaged,
-          includeUnstaged: review.git?.includeUnstaged !== false && config.includeUnstaged,
-          includeUntracked: review.git?.includeUntracked !== false && config.includeUntracked,
+          includeStaged: review?.git?.includeStaged !== false && config.includeStaged,
+          includeUnstaged: review?.git?.includeUnstaged !== false && config.includeUnstaged,
+          includeUntracked: review?.git?.includeUntracked !== false && config.includeUntracked,
           ignoredPaths: config.ignoredPaths,
           generatedPaths: config.generatedPaths,
         });
-        const recorded = renderedStatus.fingerprint || review.git?.fingerprint || null;
+        const recorded = renderedStatus.fingerprint || review?.git?.fingerprint || null;
         json(res, 200, {
+          mode: review ? "guided" : "diff-only",
           stale: Boolean(recorded && current.fingerprint !== recorded),
           fingerprint: recorded,
           currentFingerprint: current.fingerprint,
-          renderedAt: renderedStatus.renderedAt || review.review?.generatedAt,
+          renderedAt: renderedStatus.renderedAt || review?.review?.generatedAt,
         });
       } catch (error) {
         json(res, 422, { code: "missing-base", message: error.message || "The selected Git base is unavailable." });

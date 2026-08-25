@@ -16,6 +16,7 @@ import {
   Scale,
   ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
   Star,
   Target,
 } from "lucide-react";
@@ -577,7 +578,10 @@ function ReviewGuide({
   onReload: (contextLines: number) => Promise<void>;
 }) {
   const { review, diff } = bundle;
+  // Level 0: with no recorded narrative there is only one thing to show.
+  const diffOnly = bundle.mode === "diff-only";
   const [activeView, setActiveView] = useState<ReviewView>(() => {
+    if (diffOnly) return "diff";
     if (window.location.hash) return "evidence";
     const stored = window.localStorage.getItem(`opendiff:${review.review.id}:view`);
     if (stored === "guide" || stored === "activity") return "evidence";
@@ -777,7 +781,9 @@ function ReviewGuide({
     }
   }, [contextLines, onReload]);
 
-  if (!review.sections.length) {
+  // A diff-only review has no sections by definition; only a guided review
+  // that arrived without them is actually broken.
+  if (!diffOnly && !review.sections.length) {
     return <div className="lg-empty">This review has no guided sections.</div>;
   }
 
@@ -818,7 +824,7 @@ function ReviewGuide({
 
       <nav className="lg-viewbar" aria-label="Review views">
         <div className="lg-view-tabs">
-          {(review.design ? ["design", "evidence", "diff"] as const : ["evidence", "diff"] as const).map((view) => (
+          {(diffOnly ? ["diff"] as const : review.design ? ["design", "evidence", "diff"] as const : ["evidence", "diff"] as const).map((view) => (
             <button
               type="button"
               key={view}
@@ -873,9 +879,19 @@ function ReviewGuide({
         ) : activeView === "diff" ? (
           <section className="lg-mode-view lg-full-diff-view" data-testid="diff-view" aria-labelledby="diff-title">
             <header className="lg-mode-header lg-diff-mode-header">
-              <div><span>Diff</span><h1 id="diff-title">All changes</h1></div>
+              <div><span>{diffOnly ? review.git.branch : "Diff"}</span><h1 id="diff-title">{diffOnly ? `Changes against ${review.git.baseRef}` : "All changes"}</h1></div>
               <div className="lg-diff-total"><span>{diff.files.length} files changed</span><span className="lg-additions">+{review.stats.additions}</span><span className="lg-deletions">−{review.stats.deletions}</span></div>
             </header>
+            {diffOnly ? (
+              <div className="lg-upgrade-banner" data-testid="diff-only-banner">
+                <Sparkles size={14} />
+                <span>
+                  This is the plain Git diff. Ask a coding agent to record the design and
+                  evidence behind it with <code>@opendiff</code>, and this view gains Design
+                  and Evidence tabs.
+                </span>
+              </div>
+            ) : null}
             <div className="lg-full-diff-list">
               {diff.files.map((file) => {
                 const key = `diff:${file.id}`;
@@ -992,6 +1008,13 @@ function ReviewGuide({
         )}
       </main>
 
+      {bundle.source === "shared" ? (
+        <footer className="lg-share-footer" data-testid="share-footer">
+          <span>Shared review generated with</span>
+          <a href="https://github.com/francescogabrieli/opendiff" target="_blank" rel="noreferrer noopener">OpenDiff</a>
+        </footer>
+      ) : null}
+
       {toast ? <div className="lg-toast"><CircleCheck size={14} /> {toast}</div> : null}
     </div>
   );
@@ -1034,8 +1057,8 @@ function LoadingScreen() {
   return (
     <main className="lg-load-state" role="status">
       <span className="lg-brand-mark"><span /></span>
-      <h1>Loading guided review</h1>
-      <p>Reading the agent narrative and the current Git diff.</p>
+      <h1>Loading review</h1>
+      <p>Reading the current Git diff.</p>
       <span className="lg-loader" />
     </main>
   );

@@ -32,26 +32,27 @@ for (const agent of Object.values(agents)) {
 }
 
 function printHelp() {
-  console.log(`OpenDiff — guided reviews for coding agents
+  console.log(`OpenDiff — review code you did not write
+
+Try it now, in any Git repository:
+  npx --yes @opendiff/cli@latest
 
 Usage:
+  opendiff                      Open the current working-tree change
+  opendiff share                Write a self-contained HTML file of the review
   opendiff install [--agent codex|claude|all] [--force]
   opendiff uninstall [--agent codex|claude|all]
   opendiff doctor
-  opendiff review [options]
-
-Recommended first run:
-  npx --yes @francescogabrieli/opendiff@latest install
-
-After installation, invoke @opendiff from Codex or Claude Code.
 
 Installer options:
   --agent NAME  Install for one agent, or all detected agents
   --force       Replace an existing skill even when it is already current
   --help        Show this help
 
-The review, validate, render, open, and export commands are forwarded to the
-OpenDiff runtime. `);
+Installing the skill lets Codex and Claude Code record the design and evidence
+behind a change; invoke @opendiff from the agent's chat. Every other command
+(review, share, validate, render, open, export) is forwarded to the OpenDiff
+runtime — run \`opendiff review --help\` for its options.`);
 }
 
 function parseInstallerOptions(argv) {
@@ -175,6 +176,7 @@ function doctor() {
     })()],
     ["Git", commandAvailable("git")],
     ["Bundled renderer", existsSync(join(packageRoot, "dist", "index.html"))],
+    ["Share template", existsSync(join(packageRoot, "dist-share", "opendiff-share.html"))],
     ["Codex detected", existsSync(agents.codex.home)],
     ["Codex skill installed", existsSync(agents.codex.destination)],
     ["Claude Code detected", existsSync(agents.claude.home)],
@@ -186,11 +188,11 @@ function doctor() {
     console.log(`${passed ? "✓" : "×"} ${label}`);
   }
 
-  const blocking = checks.slice(0, 3).some(([, passed]) => !passed);
+  const blocking = checks.slice(0, 4).some(([, passed]) => !passed);
   if (blocking) process.exitCode = 1;
 }
 
-const [command = "help", ...argv] = process.argv.slice(2);
+const [command, ...argv] = process.argv.slice(2);
 
 try {
   if (command === "install") installSkill(argv);
