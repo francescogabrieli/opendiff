@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,7 +12,28 @@ import { synthesizeReview } from "../cli/synthesize.mjs";
 import { buildSharedHtml, DEFAULT_SHARE_FILENAME } from "../cli/share.mjs";
 
 const cliFilePath = fileURLToPath(new URL("../cli/index.mjs", import.meta.url));
-const shareTemplate = fileURLToPath(new URL("../dist-share/opendiff-share.html", import.meta.url));
+const shareTemplatePath = fileURLToPath(new URL("../dist-share/opendiff-share.html", import.meta.url));
+
+const STUB_TEMPLATE = '<!doctype html><html><head><script id="opendiff-data" type="application/json">null</script></head><body><div id="root"></div></body></html>';
+
+function writeStubTemplate() {
+  const root = mkdtempSync(join(tmpdir(), "opendiff-template-"));
+  const path = join(root, "opendiff-share.html");
+  writeFileSync(path, STUB_TEMPLATE);
+  return path;
+}
+
+// The CLI resolves its template from the package root, and that template is a
+// build artifact `npm test` does not produce. The test supplies its own so it
+// stays hermetic; the real template's self-containment is enforced by the share
+// build itself, which fails when an external reference survives inlining.
+function withStubTemplateInPackage() {
+  const directory = fileURLToPath(new URL("../dist-share", import.meta.url));
+  if (existsSync(shareTemplatePath)) return () => {};
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(shareTemplatePath, STUB_TEMPLATE);
+  return () => rmSync(shareTemplatePath, { force: true });
+}
 
 function git(root, ...args) {
   return execFileSync("git", args, { cwd: root, encoding: "utf8" });
@@ -47,51 +68,63 @@ test("synthesizes a diff-only review from Git alone, with no recorded narrative"
   assert.equal(document.git.baseRef, "HEAD");
 });
 
-test("the CLI opens a repository that has no review.json", () => {
+test("the CLI opens a repository that has no review.json", async () => {
   const root = createRepository();
-  const result = spawnSync(process.execPath, [cliFilePath, "--no-open", "--port", "4699"], {
-    cwd: root,
-    encoding: "utf8",
-    timeout: 20000,
-    killSignal: "SIGKILL",
-  });
-  const output = `${result.stdout}${result.stderr}`;
-  assert.match(output, /diff-only review/);
-  assert.match(output, /1 diff files/);
-  assert.doesNotMatch(output, /No OpenDiff review was found/);
+  // `review` starts a server and does not exit, so the assertion is on what it
+  // reports before listening, not on its exit code.
+  const child = spawn(process.execPath, [cliFilePath, "--no-open", "--port", "4699"], { cwd: root, encoding: "utf8" });
+  try {
+    const output = await new Promise((resolve, reject) => {
+      let buffer = "";
+      const onData = (chunk) => {
+        buffer += chunk;
+        if (buffer.includes("review starting at")) resolve(buffer);
+      };
+      child.stdout.on("data", onData);
+      child.stderr.on("data", onData);
+      child.on("error", reject);
+      child.on("exit", () => resolve(buffer));
+    });
+    assert.match(output, /diff-only review/);
+    assert.match(output, /1 diff files/);
+    assert.doesNotMatch(output, /No OpenDiff review was found/);
+  } finally {
+    child.kill("SIGKILL");
+  }
 });
 
-test("share writes one self-contained file that excludes itself from the diff", () => {
-  const root = createRepository();
-  const run = () => spawnSync(process.execPath, [cliFilePath, "share", "--output", "review.html"], {
-    cwd: root,
-    encoding: "utf8",
-    timeout: 30000,
-  });
+test("share writes one file and excludes it from its own diff", () => {
+  const restore = withStubTemplateInPackage();
+  try {
+    const root = createRepository();
+    const run = () => spawnSync(process.execPath, [cliFilePath, "share", "--output", "review.html"], {
+      cwd: root,
+      encoding: "utf8",
+      timeout: 30000,
+    });
 
-  const first = run();
-  assert.equal(first.status, 0, `${first.stdout}${first.stderr}`);
-  const firstSize = readFileSync(join(root, "review.html")).byteLength;
+    const first = run();
+    assert.equal(first.status, 0, `${first.stdout}${first.stderr}`);
+    const firstSize = readFileSync(join(root, "review.html")).byteLength;
 
-  // Sharing twice must not embed the previous shared file into the new one.
-  const second = run();
-  assert.equal(second.status, 0, `${second.stdout}${second.stderr}`);
-  const secondSize = readFileSync(join(root, "review.html")).byteLength;
-  assert.equal(firstSize, secondSize);
+    // Sharing twice must not embed the previous shared file into the new one.
+    const second = run();
+    assert.equal(second.status, 0, `${second.stdout}${second.stderr}`);
+    assert.equal(readFileSync(join(root, "review.html")).byteLength, firstSize);
 
-  const html = readFileSync(join(root, "review.html"), "utf8");
-  const payload = JSON.parse(html.match(/<script id="opendiff-data" type="application\/json">([\s\S]*?)<\/script>/)[1]);
-  assert.equal(payload.mode, "diff-only");
-  assert.deepEqual(payload.diff.files.map((file) => file.path), ["src/value.ts"]);
-
-  // A shared review has to open with no network at all.
-  const external = [...html.matchAll(/(?:src|href)="(\/[^"]*)"/g)];
-  assert.deepEqual(external, []);
+    const html = readFileSync(join(root, "review.html"), "utf8");
+    const payload = JSON.parse(html.match(/<script id="opendiff-data" type="application\/json">([\s\S]*?)<\/script>/)[1]);
+    assert.equal(payload.mode, "diff-only");
+    assert.deepEqual(payload.diff.files.map((file) => file.path), ["src/value.ts"]);
+    assert.equal(payload.review.stats.filesChanged, 1);
+  } finally {
+    restore();
+  }
 });
 
 test("an embedded payload cannot break out of its script tag", () => {
   const html = buildSharedHtml({
-    templatePath: shareTemplate,
+    templatePath: writeStubTemplate(),
     review: { review: { title: "</script><script>window.__pwned = true</script>" }, sections: [] },
     diff: { files: [] },
     mode: "diff-only",
