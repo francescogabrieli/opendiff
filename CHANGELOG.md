@@ -4,6 +4,32 @@ All notable changes to OpenDiff are documented here. The project follows [Semant
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-25
+
+### Added
+
+- Add Level 0: `opendiff` now works in any Git repository with no installed skill, no coding agent, and no `.opendiff/review.json`, showing the real working-tree change on its own. Design and Evidence appear as an upgrade once an agent records them.
+- Add `opendiff share`, which writes the whole review into a single self-contained HTML file with every script, style, and syntax grammar inlined, so a shared review opens with no server and no network.
+- Add `--gist` to `opendiff share`, which uploads the shared file through the GitHub CLI after an explicit confirmation, because it publishes the source code in the diff.
+- Add `npm run release:preflight`, which reproduces the publish workflow's guards locally so a release cannot fail after the tag has been pushed.
+
+### Changed
+
+- Rename the package from `@francescogabrieli/opendiff` to `@opendiff/cli`. The `opendiff` binary is unchanged.
+- Running `opendiff` with no command now opens the current change instead of printing help.
+- The publish workflow now explains why it refuses a release instead of exiting silently, and smoke-tests the packed tarball in a bare repository before publishing.
+
+### Fixed
+
+- Fix the shared review embedding the previously shared file into its own diff, which doubled the output on every run.
+- Fix `$&` and ``$` `` sequences in an embedded payload being expanded by `String.replace`, which spliced the surrounding bundle into the page.
+- Fix the renderer refusing to display a review that legitimately has no logical sections.
+
+## [0.2.1] - 2026-08-17
+
+- Improve diff rendering and review interactions.
+- Optimize diff collection and stale-state detection.
+
 ## [0.2.0] - 2026-08-14
 
 ### Added

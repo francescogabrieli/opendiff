@@ -25,14 +25,43 @@ export type ReviewValidation = {
   unresolvedReferenceIds: string[];
 };
 
+export type ReviewMode = "guided" | "diff-only";
+
 export type ReviewBundle = {
   review: ReviewData;
   diff: { files: DiffFile[]; fingerprint?: string; stats?: DiffDocument["stats"] };
-  source: "demo" | "rendered";
+  source: "demo" | "rendered" | "shared";
+  mode: ReviewMode;
   stale: boolean;
   validation: ReviewValidation;
   metadata?: Pick<DiffDocument, "renderedAt" | "baseRef" | "baseCommit">;
 };
+
+type EmbeddedPayload = {
+  review: ReviewData;
+  diff: DiffDocument;
+  mode?: ReviewMode;
+  sharedAt?: string;
+};
+
+// `opendiff share` writes the whole review into the page, so a shared file
+// renders with no server, no network, and no repository present.
+function readEmbeddedPayload(): EmbeddedPayload | null {
+  const element = document.getElementById("opendiff-data");
+  if (!element?.textContent) return null;
+  try {
+    const parsed = JSON.parse(element.textContent) as EmbeddedPayload | null;
+    if (!parsed?.review || !Array.isArray(parsed.diff?.files)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function reviewMode(review: ReviewData | null | undefined, fallback?: ReviewMode): ReviewMode {
+  if ((review as { mode?: string } | null | undefined)?.mode === "diff-only") return "diff-only";
+  return fallback ?? "guided";
+}
 
 type LoadOptions = {
   demo?: boolean;
@@ -268,6 +297,11 @@ function demoBundle(fixture?: string | null): ReviewBundle {
     }
   }
   if (fixture === "empty") diffDocument.files = [];
+  if (fixture === "diffonly") {
+    reviewDocument.sections = [];
+    delete (reviewDocument as { design?: unknown }).design;
+    (reviewDocument as { mode?: string }).mode = "diff-only";
+  }
   const enriched = enrichDiff(reviewDocument, diffDocument.files);
   const warnings = [...enriched.validation.warnings];
   if (fixture === "empty") warnings.unshift("No code changes were found between the selected base and the working tree.");
@@ -275,6 +309,7 @@ function demoBundle(fixture?: string | null): ReviewBundle {
     review: annotateReview(reviewDocument, { ...enriched.validation, warnings }),
     diff: { files: enriched.files },
     source: "demo",
+    mode: reviewMode(reviewDocument),
     stale: fixture === "stale",
     validation: { ...enriched.validation, warnings },
     metadata: { renderedAt: reviewDocument.review.generatedAt, baseRef: reviewDocument.git.baseRef, baseCommit: reviewDocument.git.baseCommit },
@@ -336,8 +371,22 @@ export async function loadReviewStatus(): Promise<ReviewStatusDocument> {
 }
 
 export async function loadReviewBundle(options: LoadOptions = {}): Promise<ReviewBundle> {
+  const embedded = readEmbeddedPayload();
+  if (embedded) {
+    const enriched = enrichDiff(embedded.review, embedded.diff.files);
+    const validation = enriched.validation;
+    return {
+      review: annotateReview(embedded.review, validation),
+      diff: { files: enriched.files, fingerprint: embedded.diff.fingerprint, stats: embedded.diff.stats },
+      source: "shared",
+      mode: reviewMode(embedded.review, embedded.mode),
+      stale: false,
+      validation,
+      metadata: { renderedAt: embedded.sharedAt ?? embedded.diff.renderedAt, baseRef: embedded.diff.baseRef, baseCommit: embedded.diff.baseCommit },
+    };
+  }
   const fixture = options.fixture ?? new URLSearchParams(window.location.search).get("fixture");
-  if (options.demo || fixture === "demo" || fixture === "small" || fixture === "medium" || fixture === "rename" || fixture === "deleted" || fixture === "lockfile" || fixture === "large" || fixture === "invalid" || fixture === "stale" || fixture === "empty" || fixture === "missing") {
+  if (options.demo || fixture === "demo" || fixture === "small" || fixture === "medium" || fixture === "rename" || fixture === "deleted" || fixture === "lockfile" || fixture === "large" || fixture === "invalid" || fixture === "stale" || fixture === "empty" || fixture === "diffonly" || fixture === "missing") {
     if (fixture === "missing") throw new ReviewLoadError("missing-review", "No OpenDiff review was found. Ask the coding agent to generate .opendiff/review.json.");
     return demoBundle(fixture);
   }
@@ -356,6 +405,7 @@ export async function loadReviewBundle(options: LoadOptions = {}): Promise<Revie
     review: annotateReview(review, { ...enriched.validation, warnings: [...new Set(warnings)] }),
     diff: { files: enriched.files, fingerprint: diffDocument.fingerprint, stats: diffDocument.stats },
     source: "rendered",
+    mode: reviewMode(review, (diffDocument as { mode?: ReviewMode }).mode),
     stale,
     validation: { ...enriched.validation, warnings: [...new Set(warnings)] },
     metadata: { renderedAt: diffDocument.renderedAt, baseRef: diffDocument.baseRef, baseCommit: diffDocument.baseCommit },

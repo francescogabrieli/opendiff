@@ -1,12 +1,12 @@
 # Publishing OpenDiff to npm
 
-OpenDiff is published as the public scoped package `@francescogabrieli/opendiff`. npm publication is performed by `.github/workflows/release.yml` through Trusted Publishing; maintainers must not store a long-lived npm publish token in the repository.
+OpenDiff is published as the public scoped package `@opendiff/cli`. npm publication is performed by `.github/workflows/release.yml` through Trusted Publishing; maintainers must not store a long-lived npm publish token in the repository.
 
 ## One-time Trusted Publisher setup
 
 Configure the package on npm with this exact GitHub identity:
 
-- package: `@francescogabrieli/opendiff`;
+- package: `@opendiff/cli`;
 - organization or user: `francescogabrieli`;
 - repository: `opendiff`;
 - workflow filename: `release.yml`;
@@ -16,7 +16,7 @@ Configure the package on npm with this exact GitHub identity:
 The equivalent npm CLI command with npm 11.15 or newer is:
 
 ```bash
-npm trust github @francescogabrieli/opendiff \
+npm trust github @opendiff/cli \
   --repo francescogabrieli/opendiff \
   --file release.yml \
   --allow-publish
@@ -41,10 +41,10 @@ The tag workflow checks that the tagged commit belongs to `main`, that the tag m
 ## Verify publication
 
 ```bash
-npm view @francescogabrieli/opendiff version
-npm view @francescogabrieli/opendiff@X.Y.Z dist.attestations
-npx --yes @francescogabrieli/opendiff@X.Y.Z --help
-npx --yes @francescogabrieli/opendiff@X.Y.Z doctor
+npm view @opendiff/cli version
+npm view @opendiff/cli@X.Y.Z dist.attestations
+npx --yes @opendiff/cli@X.Y.Z --help
+npx --yes @opendiff/cli@X.Y.Z doctor
 ```
 
 Then install the skill and generate a review in a disposable Git repository. Confirm that Git reports only the intentional fixture change and that neither `public/data/` nor `.opendiff/` appears in `git status --short`.

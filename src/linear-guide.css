@@ -230,6 +230,25 @@ code { font-family: "SFMono-Regular", "JetBrains Mono", Consolas, monospace; }
 }
 .lg-stale-banner button { margin-left: auto; color: #efd09d; background: transparent; }
 
+.lg-upgrade-banner {
+  max-width: 1400px; margin: 0 auto 16px; padding: 10px 13px;
+  display: flex; align-items: flex-start; gap: 9px; border: 1px solid #23384a; border-radius: 8px;
+  color: #93b4cc; background: rgba(35,72,102,.16); font-size: 12px; line-height: 1.55;
+}
+.lg-upgrade-banner svg { flex: none; margin-top: 2px; }
+.lg-upgrade-banner code {
+  padding: 1px 5px; border-radius: 4px; color: #cfe2f0;
+  background: rgba(140,180,210,.14); font-size: 11px;
+}
+
+.lg-share-footer {
+  max-width: 1400px; margin: 26px auto 12px; padding: 12px 4px 0;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  border-top: 1px solid #1e1f22; color: #6b6d73; font-size: 11px;
+}
+.lg-share-footer a { color: #8d9096; text-decoration: none; border-bottom: 1px solid #303236; }
+.lg-share-footer a:hover { color: #b9bcc2; }
+
 .lg-guide-sections { max-width: 1500px; margin: 0 auto; }
 .lg-guide-section {
   position: relative; display: grid; grid-template-columns: minmax(300px, 34%) minmax(0, 1fr);

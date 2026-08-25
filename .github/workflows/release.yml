@@ -41,9 +41,15 @@ jobs:
           VERSION="$(node --print "require('./package.json').version")"
           PACKAGE="$(node --print "require('./package.json').name")"
           TAG="${GITHUB_REF_NAME}"
-          test "$TAG" = "v$VERSION"
+          if [ "$TAG" != "v$VERSION" ]; then
+            echo "::error::Tag $TAG does not match package.json version $VERSION. Retag as v$VERSION."
+            exit 1
+          fi
           git fetch --no-tags origin main
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Commit $GITHUB_SHA is not an ancestor of origin/main, so $TAG points at work that never reached main. Merge the release branch into main, then move the tag onto the merged commit. Run 'npm run release:preflight' locally to catch this before tagging."
+            exit 1
+          fi
           VERSION="$VERSION" node --input-type=module <<'NODE'
           import fs from 'node:fs';
 
@@ -118,6 +124,38 @@ jobs:
           npm exec --yes --package "./$TARBALL" -- opendiff install --agent all
           test -f "$TEST_ROOT/codex/skills/opendiff/SKILL.md"
           test -f "$TEST_ROOT/claude/skills/opendiff/SKILL.md"
+
+      - name: Smoke test the published tarball in a bare repository
+        env:
+          TARBALL: ${{ steps.package.outputs.tarball }}
+        shell: bash
+        run: |
+          # Level 0 has to work with no skill installed, no agent, and no
+          # .opendiff/review.json — this is the first-run path for new users.
+          PACKED="$PWD/$TARBALL"
+          SMOKE="$(mktemp -d)"
+          cd "$SMOKE"
+          git init -q .
+          git config user.email smoke@example.com
+          git config user.name "OpenDiff smoke"
+          printf 'export const value = 1;\n' > value.ts
+          git add -A
+          git commit -qm base
+          printf 'export const value = 2;\nexport const added = true;\n' > value.ts
+
+          npm exec --yes --package "$PACKED" -- opendiff share --output smoke.html
+          test -s smoke.html
+          node -e '
+            const fs = require("fs");
+            const html = fs.readFileSync("smoke.html", "utf8");
+            const match = html.match(/<script id="opendiff-data" type="application\/json">([\s\S]*?)<\/script>/);
+            if (!match) throw new Error("shared file has no embedded payload");
+            const payload = JSON.parse(match[1]);
+            if (payload.mode !== "diff-only") throw new Error("expected a diff-only payload");
+            if (!payload.diff.files.some((file) => file.path === "value.ts")) throw new Error("shared payload is missing the change");
+            const external = [...html.matchAll(/(?:src|href)="(\/[^"]*)"/g)];
+            if (external.length) throw new Error("shared file is not self-contained: " + external.map((m) => m[1]).join(", "));
+          '
 
       - name: Check registry state
         id: registry
