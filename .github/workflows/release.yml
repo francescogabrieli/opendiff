@@ -184,9 +184,26 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         shell: bash
         run: |
-          test "$(npm view "$PACKAGE@$VERSION" version)" = "$VERSION"
-          npm view "$PACKAGE@$VERSION" dist.attestations --json > npm-attestations.json
-          test -s npm-attestations.json
+          # npm's own publish output says this outright: "Your package is
+          # being processed and may take a few minutes to become available."
+          # Budget five minutes, not a few seconds.
+          for attempt in $(seq 1 20); do
+            if [ "$(npm view "$PACKAGE@$VERSION" version 2>/dev/null)" = "$VERSION" ]; then break; fi
+            if [ "$attempt" = 20 ]; then
+              echo "::error::$PACKAGE@$VERSION did not appear on the registry after publishing (waited 5 minutes)."
+              exit 1
+            fi
+            sleep 15
+          done
+          for attempt in $(seq 1 20); do
+            npm view "$PACKAGE@$VERSION" dist.attestations --json > npm-attestations.json 2>/dev/null || true
+            if [ -s npm-attestations.json ]; then break; fi
+            if [ "$attempt" = 20 ]; then
+              echo "::error::npm did not return provenance attestations for $PACKAGE@$VERSION (waited 5 minutes)."
+              exit 1
+            fi
+            sleep 15
+          done
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
 
