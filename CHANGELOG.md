@@ -4,6 +4,12 @@ All notable changes to OpenDiff are documented here. The project follows [Semant
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-08-27
+
+### Added
+
+- Add a trust layer that checks the review's claims against the real diff, independently of the agent's own self-report: a changed file mentioned in no section, and a `verified` acceptance criterion whose evidence no longer resolves against the current diff, are surfaced with a dedicated summary banner and a distinct "unsupported" badge — separate from the agent's own "unverified" — in both the Design and Evidence views, and as `opendiff validate` warnings.
+
 ## [0.3.0] - 2026-08-25
 
 ### Added
