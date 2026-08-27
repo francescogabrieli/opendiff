@@ -1,6 +1,6 @@
 {
   "name": "@opendiff/cli",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "Review code you did not write. Local, guided reviews for agent-generated changes.",
   "license": "MIT",
