@@ -74,13 +74,13 @@ Restart an agent that was already open after installation.
 Open a Git repository in your coding agent and ask it to implement a change:
 
 ```text
-@opendiff implementa questa modifica e mostrami la review
+@opendiff add rate limiting to the login endpoint and show me the review
 ```
 
-You can also review changes already present in the working tree:
+You can also review changes already present in the working tree, without touching the code:
 
 ```text
-@opendiff spiegami queste modifiche con una review, senza cambiare il codice
+@opendiff walk me through the uncommitted changes as a guided review
 ```
 
 The agent captures the Git baseline, records the design, performs the work, runs relevant checks, validates the final review, and opens OpenDiff in your browser.
