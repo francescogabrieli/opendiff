@@ -234,4 +234,32 @@ test.describe("OpenDiff guided review", () => {
     await expect(page.getByRole("button", { name: "Evidence", exact: true })).toHaveCount(0);
     await expect(page.locator('[data-testid^="diff-file-"]').first()).toBeVisible();
   });
+
+  test("flags a verified claim whose evidence no longer resolves, and a file no section mentions", async ({ page }) => {
+    await page.goto("/?fixture=unsupported");
+    await page.getByRole("button", { name: "Evidence", exact: true }).click();
+
+    const banner = page.getByTestId("trust-banner");
+    await expect(banner).toContainText("2");
+    await expect(banner).toContainText("verified claim");
+    await expect(banner).toContainText("1");
+    await expect(banner).toContainText("not mentioned in the design");
+
+    const unsupported = page.getByTestId("criterion-criterion-concurrent-401");
+    await expect(unsupported).toHaveClass(/is-unsupported/);
+    await expect(unsupported).toContainText("unsupported");
+    await expect(unsupported).toContainText("OpenDiff could not confirm this against the current diff");
+
+    await page.getByRole("button", { name: "Diff", exact: true }).click();
+    const renamedFile = page.locator('[data-testid^="diff-file-"]', { hasText: "newly-added-untouched.ts" });
+    await expect(renamedFile.getByText("Not mentioned")).toBeVisible();
+  });
+
+  test("does not flag anything on a clean, fully-supported review", async ({ page }) => {
+    await page.goto(demoUrl);
+    await page.getByRole("button", { name: "Evidence", exact: true }).click();
+
+    await expect(page.getByTestId("trust-banner")).toHaveCount(0);
+    await expect(page.locator(".lg-criterion.is-unsupported")).toHaveCount(0);
+  });
 });

@@ -14,6 +14,7 @@ import {
   MoreHorizontal,
   RefreshCw,
   Scale,
+  ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
@@ -353,11 +354,13 @@ function DiffFileCard({
   onReviewedChange,
   selectedLineId,
   onLineSelect,
+  unmentioned,
 }: {
   file: DiffFile;
   references: ReviewReference[];
   registerRef: (element: HTMLElement | null) => void;
   onCopy: () => void;
+  unmentioned?: boolean;
   forceOpen: boolean;
   diffMode: DiffMode;
   reviewed: boolean;
@@ -402,6 +405,7 @@ function DiffFileCard({
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           <FileCode2 size={13} />
           <span className="lg-file-path">{file.path}</span>
+          {unmentioned ? <span className="lg-file-badge-unmentioned" title="OpenDiff found no section that mentions this file.">Not mentioned</span> : null}
         </button>
         <div className="lg-file-stats">
           {file.additions ? <span className="lg-additions">+{file.additions}</span> : null}
@@ -486,7 +490,7 @@ function GuideFileButton({
   );
 }
 
-function DesignOverview({ review, onOpenEvidence }: { review: ReviewBundle["review"]; onOpenEvidence: (criterionId?: string) => void }) {
+function DesignOverview({ review, unsupportedCriteriaIds, onOpenEvidence }: { review: ReviewBundle["review"]; unsupportedCriteriaIds: Set<string>; onOpenEvidence: (criterionId?: string) => void }) {
   const design = review.design;
   if (!design) return null;
   const verified = design.acceptanceCriteria.filter((criterion) => criterion.status === "verified").length;
@@ -530,13 +534,16 @@ function DesignOverview({ review, onOpenEvidence }: { review: ReviewBundle["revi
           <div><h2 id="coverage-title">Evidence coverage</h2><p>{verified} of {design.acceptanceCriteria.length} acceptance criteria are verified.</p></div>
         </div>
         <div className="lg-design-criteria-summary">
-          {design.acceptanceCriteria.map((criterion) => (
-            <button type="button" key={criterion.id} data-testid={`design-criterion-${criterion.id}`} className={`is-${criterion.status}`} onClick={() => onOpenEvidence(criterion.id)}>
-              {criterion.status === "verified" ? <Check size={12} /> : <AlertTriangle size={12} />}
-              <span>{criterion.statement}</span>
-              <small>{criterion.status}</small>
-            </button>
-          ))}
+          {design.acceptanceCriteria.map((criterion) => {
+            const unsupported = criterion.status === "verified" && unsupportedCriteriaIds.has(criterion.id);
+            return (
+              <button type="button" key={criterion.id} data-testid={`design-criterion-${criterion.id}`} className={unsupported ? "is-unsupported" : `is-${criterion.status}`} onClick={() => onOpenEvidence(criterion.id)}>
+                {unsupported ? <ShieldAlert size={12} /> : criterion.status === "verified" ? <Check size={12} /> : <AlertTriangle size={12} />}
+                <span>{criterion.statement}</span>
+                <small>{unsupported ? "unsupported" : criterion.status}</small>
+              </button>
+            );
+          })}
         </div>
         <button type="button" className="lg-open-evidence" onClick={() => onOpenEvidence()}>Review all evidence <ChevronRight size={13} /></button>
       </section>
@@ -551,7 +558,7 @@ function DesignOverview({ review, onOpenEvidence }: { review: ReviewBundle["revi
   );
 }
 
-function EvidenceMatrix({ review, registerCriterion }: { review: ReviewBundle["review"]; registerCriterion: (id: string, element: HTMLElement | null) => void }) {
+function EvidenceMatrix({ review, unsupportedCriteriaIds, registerCriterion }: { review: ReviewBundle["review"]; unsupportedCriteriaIds: Set<string>; registerCriterion: (id: string, element: HTMLElement | null) => void }) {
   const design = review.design;
   if (!design) return null;
   const verified = design.acceptanceCriteria.filter((criterion) => criterion.status === "verified").length;
@@ -559,13 +566,20 @@ function EvidenceMatrix({ review, registerCriterion }: { review: ReviewBundle["r
   return (
     <section className="lg-evidence-matrix" data-testid="evidence-matrix" aria-labelledby="evidence-title">
       <div className="lg-design-card-heading"><CircleCheck size={14} /><h3 id="evidence-title">Acceptance criteria</h3><span>{verified}/{design.acceptanceCriteria.length} verified</span></div>
-      {design.acceptanceCriteria.map((criterion) => (
-        <article className={`lg-criterion is-${criterion.status}`} key={criterion.id} data-testid={`criterion-${criterion.id}`} ref={(element) => registerCriterion(criterion.id, element)}>
-          <span>{criterion.status === "verified" ? <Check size={13} /> : <AlertTriangle size={13} />}</span>
-          <div><strong>{criterion.statement}</strong>{criterion.evidence.length ? criterion.evidence.map((evidence) => <p key={`${evidence.type}-${evidence.description}`}><code>{evidence.type}</code> {evidence.description}</p>) : <p>No supporting evidence recorded.</p>}</div>
-          <small>{criterion.status}</small>
-        </article>
-      ))}
+      {design.acceptanceCriteria.map((criterion) => {
+        const unsupported = criterion.status === "verified" && unsupportedCriteriaIds.has(criterion.id);
+        return (
+          <article className={`lg-criterion ${unsupported ? "is-unsupported" : `is-${criterion.status}`}`} key={criterion.id} data-testid={`criterion-${criterion.id}`} ref={(element) => registerCriterion(criterion.id, element)}>
+            <span>{unsupported ? <ShieldAlert size={13} /> : criterion.status === "verified" ? <Check size={13} /> : <AlertTriangle size={13} />}</span>
+            <div>
+              <strong>{criterion.statement}</strong>
+              {unsupported ? <p className="lg-unsupported-note">OpenDiff could not confirm this against the current diff: the evidence below does not resolve.</p> : null}
+              {criterion.evidence.length ? criterion.evidence.map((evidence) => <p key={`${evidence.type}-${evidence.description}`}><code>{evidence.type}</code> {evidence.description}</p>) : <p>No supporting evidence recorded.</p>}
+            </div>
+            <small>{unsupported ? "unsupported" : criterion.status}</small>
+          </article>
+        );
+      })}
     </section>
   );
 }
@@ -580,6 +594,8 @@ function ReviewGuide({
   const { review, diff } = bundle;
   // Level 0: with no recorded narrative there is only one thing to show.
   const diffOnly = bundle.mode === "diff-only";
+  const unmentionedFilePaths = useMemo(() => new Set(bundle.trust.unmentionedFiles), [bundle.trust.unmentionedFiles]);
+  const unsupportedCriteriaIds = useMemo(() => new Set(bundle.trust.unsupportedCriteriaIds), [bundle.trust.unsupportedCriteriaIds]);
   const [activeView, setActiveView] = useState<ReviewView>(() => {
     if (diffOnly) return "diff";
     if (window.location.hash) return "evidence";
@@ -875,7 +891,7 @@ function ReviewGuide({
 
       <main id="review-content" className="lg-guide-scroll diff-scroll" ref={guideScrollRef}>
         {activeView === "design" ? (
-          <DesignOverview review={review} onOpenEvidence={openEvidence} />
+          <DesignOverview review={review} unsupportedCriteriaIds={unsupportedCriteriaIds} onOpenEvidence={openEvidence} />
         ) : activeView === "diff" ? (
           <section className="lg-mode-view lg-full-diff-view" data-testid="diff-view" aria-labelledby="diff-title">
             <header className="lg-mode-header lg-diff-mode-header">
@@ -907,6 +923,7 @@ function ReviewGuide({
                     selectedLineId={selectedLineId}
                     registerRef={(element) => { fileRefs.current[key] = element; }}
                     onCopy={() => void copyText(file.path, "File path copied")}
+                    unmentioned={unmentionedFilePaths.has(file.path)}
                     onLineSelect={(line) => {
                       setExpandedFileKey(key);
                       setSelectedLineId(line.id);
@@ -936,6 +953,22 @@ function ReviewGuide({
               </div>
             </header>
 
+            {bundle.trust.unmentionedFiles.length || bundle.trust.unsupportedCriteriaIds.length ? (
+              <div className="lg-trust-banner" data-testid="trust-banner">
+                <ShieldAlert size={14} />
+                <span>
+                  OpenDiff checked this review against the real diff:{" "}
+                  {bundle.trust.unsupportedCriteriaIds.length ? <>
+                    <strong>{bundle.trust.unsupportedCriteriaIds.length}</strong> verified claim{bundle.trust.unsupportedCriteriaIds.length === 1 ? "" : "s"} with no evidence that resolves
+                  </> : null}
+                  {bundle.trust.unsupportedCriteriaIds.length && bundle.trust.unmentionedFiles.length ? " · " : null}
+                  {bundle.trust.unmentionedFiles.length ? <>
+                    <strong>{bundle.trust.unmentionedFiles.length}</strong> changed file{bundle.trust.unmentionedFiles.length === 1 ? "" : "s"} not mentioned in the design
+                  </> : null}
+                  .
+                </span>
+              </div>
+            ) : null}
             {bundle.validation.warnings.length ? <div className="lg-warning-banner review-warning-banner"><AlertTriangle size={14} /><span>{bundle.validation.warnings[0]}</span></div> : null}
             {bundle.stale ? <div className="lg-stale-banner" data-testid="stale-banner"><AlertTriangle size={14} /><span>The working tree has changed since this review was generated.</span><button type="button" onClick={() => void refresh()}>Refresh</button></div> : null}
 
@@ -945,7 +978,7 @@ function ReviewGuide({
                 <div><span>Claims &amp; verification</span><h2 id="claims-verification-title">What is proven — and what is not</h2><p>Acceptance criteria state the claims. Executed checks show which of them have concrete support.</p></div>
               </header>
               <div className="lg-evidence-overview">
-                <EvidenceMatrix review={review} registerCriterion={(id, element) => { criterionRefs.current[id] = element; }} />
+                <EvidenceMatrix review={review} unsupportedCriteriaIds={unsupportedCriteriaIds} registerCriterion={(id, element) => { criterionRefs.current[id] = element; }} />
                 <section className="lg-check-ledger" data-testid="check-ledger" aria-labelledby="checks-title">
                   <div className="lg-design-card-heading"><ShieldCheck size={14} /><h3 id="checks-title">Executed checks</h3><span>{review.tests.executed.length}</span></div>
                   {review.tests.executed.map((test) => (

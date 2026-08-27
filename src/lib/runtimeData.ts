@@ -1,5 +1,5 @@
 import { SAMPLE_DIFF, SAMPLE_REVIEW } from "../data/sampleReview";
-import type { DiffDocument, DiffFile, DiffLine, ReviewData, ReviewReference } from "../types";
+import type { DiffDocument, DiffFile, DiffLine, ReviewData, ReviewEvidence, ReviewReference } from "../types";
 
 export type ReviewLoadErrorKind =
   | "missing-review"
@@ -27,6 +27,15 @@ export type ReviewValidation = {
 
 export type ReviewMode = "guided" | "diff-only";
 
+// What the schema already guarantees (an evidence reference that exists, a
+// command that actually ran) is a floor, not a ceiling: it says the review is
+// internally consistent, not that its claims still hold against the diff as
+// it stands right now. This is the second, independent check.
+export type ReviewTrust = {
+  unmentionedFiles: string[];
+  unsupportedCriteriaIds: string[];
+};
+
 export type ReviewBundle = {
   review: ReviewData;
   diff: { files: DiffFile[]; fingerprint?: string; stats?: DiffDocument["stats"] };
@@ -34,6 +43,7 @@ export type ReviewBundle = {
   mode: ReviewMode;
   stale: boolean;
   validation: ReviewValidation;
+  trust: ReviewTrust;
   metadata?: Pick<DiffDocument, "renderedAt" | "baseRef" | "baseCommit">;
 };
 
@@ -208,6 +218,42 @@ function enrichDiff(review: ReviewData, rawFiles: Partial<DiffFile>[]): { files:
   return { files, validation: { warnings: [...new Set(warnings)], unresolvedReferenceIds: [...new Set(unresolvedReferenceIds)] } };
 }
 
+// Mirrors the equivalent check in cli/index.mjs's validateReview. The two are
+// deliberately separate implementations, not a shared module: the CLI runs in
+// Node against a review it just validated, this runs in the browser against
+// whichever of three sources produced the bundle (demo, live server, or an
+// embedded shared payload), and the codebase already keeps reference
+// resolution itself split the same way for the same reason.
+function computeTrust(review: ReviewData, files: DiffFile[], unresolvedReferenceIds: Set<string>): ReviewTrust {
+  const mentioned = new Set<string>();
+  for (const section of review.sections) {
+    for (const reference of section.references) mentioned.add(reference.file);
+  }
+  const unmentionedFiles = review.sections.length === 0
+    ? []
+    : files
+        .filter((file) => !file.lockfile && !file.generated)
+        .filter((file) => !mentioned.has(file.path) && !(file.previousPath && mentioned.has(file.previousPath)))
+        .map((file) => file.path);
+
+  const unsupportedCriteriaIds = review.design
+    ? review.design.acceptanceCriteria
+        .filter((criterion) => criterion.status === "verified")
+        .filter((criterion) => !criterion.evidence.some((evidence) => criterionEvidenceHolds(evidence, unresolvedReferenceIds)))
+        .map((criterion) => criterion.id)
+    : [];
+
+  return { unmentionedFiles, unsupportedCriteriaIds };
+}
+
+function criterionEvidenceHolds(evidence: ReviewEvidence, unresolvedReferenceIds: Set<string>): boolean {
+  if (evidence.referenceId) return !unresolvedReferenceIds.has(evidence.referenceId);
+  // No reference to check against the diff: a test or benchmark command is
+  // trustworthy only because the schema already required it to have run and
+  // passed. Free-text manual or design evidence has nothing falsifiable at all.
+  return (evidence.type === "test" || evidence.type === "benchmark") && Boolean(evidence.command);
+}
+
 function annotateReview(review: ReviewData, validation: ReviewValidation): ReviewData {
   const unresolved = new Set(validation.unresolvedReferenceIds);
   return {
@@ -263,6 +309,20 @@ function demoBundle(fixture?: string | null): ReviewBundle {
     const reference = reviewDocument.sections[0]?.references[0];
     if (reference) reference.file = "src/missing-file.ts";
   }
+  if (fixture === "unsupported") {
+    // Shift the reference behind two verified claims' evidence so it no
+    // longer resolves — the review still reads as internally consistent
+    // (the referenceId exists, the command really ran), but the proof no
+    // longer holds against the diff, which is exactly the gap the trust
+    // layer exists to catch.
+    for (const section of reviewDocument.sections) {
+      for (const reference of section.references) {
+        if (reference.id === "ref-coordinator-tests") reference.newLines = { start: 900, end: 901 };
+      }
+    }
+    const file = diffDocument.files[1];
+    if (file) file.path = "src/newly-added-untouched.ts";
+  }
   if (fixture === "small") {
     diffDocument.files = diffDocument.files.slice(0, 2);
   }
@@ -312,6 +372,7 @@ function demoBundle(fixture?: string | null): ReviewBundle {
     mode: reviewMode(reviewDocument),
     stale: fixture === "stale",
     validation: { ...enriched.validation, warnings },
+    trust: computeTrust(reviewDocument, enriched.files, new Set(enriched.validation.unresolvedReferenceIds)),
     metadata: { renderedAt: reviewDocument.review.generatedAt, baseRef: reviewDocument.git.baseRef, baseCommit: reviewDocument.git.baseCommit },
   };
 }
@@ -382,11 +443,12 @@ export async function loadReviewBundle(options: LoadOptions = {}): Promise<Revie
       mode: reviewMode(embedded.review, embedded.mode),
       stale: false,
       validation,
+      trust: computeTrust(embedded.review, enriched.files, new Set(validation.unresolvedReferenceIds)),
       metadata: { renderedAt: embedded.sharedAt ?? embedded.diff.renderedAt, baseRef: embedded.diff.baseRef, baseCommit: embedded.diff.baseCommit },
     };
   }
   const fixture = options.fixture ?? new URLSearchParams(window.location.search).get("fixture");
-  if (options.demo || fixture === "demo" || fixture === "small" || fixture === "medium" || fixture === "rename" || fixture === "deleted" || fixture === "lockfile" || fixture === "large" || fixture === "invalid" || fixture === "stale" || fixture === "empty" || fixture === "diffonly" || fixture === "missing") {
+  if (options.demo || fixture === "demo" || fixture === "small" || fixture === "medium" || fixture === "rename" || fixture === "deleted" || fixture === "lockfile" || fixture === "large" || fixture === "invalid" || fixture === "stale" || fixture === "empty" || fixture === "diffonly" || fixture === "unsupported" || fixture === "missing") {
     if (fixture === "missing") throw new ReviewLoadError("missing-review", "No OpenDiff review was found. Ask the coding agent to generate .opendiff/review.json.");
     return demoBundle(fixture);
   }
@@ -408,6 +470,7 @@ export async function loadReviewBundle(options: LoadOptions = {}): Promise<Revie
     mode: reviewMode(review, (diffDocument as { mode?: ReviewMode }).mode),
     stale,
     validation: { ...enriched.validation, warnings: [...new Set(warnings)] },
+    trust: computeTrust(review, enriched.files, new Set(enriched.validation.unresolvedReferenceIds)),
     metadata: { renderedAt: diffDocument.renderedAt, baseRef: diffDocument.baseRef, baseCommit: diffDocument.baseCommit },
   };
 }
