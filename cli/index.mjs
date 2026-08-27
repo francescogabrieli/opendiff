@@ -188,7 +188,7 @@ function diffOnlyReview(options = {}) {
   console.log(`OpenDiff diff-only review: ${document.review.title}`);
   console.log(`  ${collected.files.length} diff files · no recorded design or evidence`);
   warnings.forEach((warning) => console.log(`  Warning: ${warning}`));
-  return { document, collected, errors: [], warnings, unresolvedReferenceIds: [], base, context, diffOnly: true };
+  return { document, collected, errors: [], warnings, unresolvedReferenceIds: [], unmentionedFiles: [], unsupportedCriteriaIds: [], base, context, diffOnly: true };
 }
 
 function validateReview({ reportOnly = false, options = {}, allowDiffOnly = false } = {}) {
@@ -212,7 +212,7 @@ function validateReview({ reportOnly = false, options = {}, allowDiffOnly = fals
     console.error("OpenDiff review invalid: review.json does not match schema 1.0.");
     errors.forEach((error) => console.error(`  Error: ${error}`));
     if (!reportOnly) process.exitCode = 1;
-    return { document: rawDocument, collected: { files: [], stats: {}, fingerprint: "", text: "" }, errors, warnings: [], unresolvedReferenceIds: [] };
+    return { document: rawDocument, collected: { files: [], stats: {}, fingerprint: "", text: "" }, errors, warnings: [], unresolvedReferenceIds: [], unmentionedFiles: [], unsupportedCriteriaIds: [] };
   }
 
   const document = parsed.data;
@@ -262,6 +262,19 @@ function validateReview({ reportOnly = false, options = {}, allowDiffOnly = fals
     }
   }
 
+  // Trust checks: the schema already rejects an internally inconsistent
+  // review (an evidence reference that does not exist, a command that was
+  // never run). These two check something the schema cannot: whether the
+  // review's claims still hold against the diff as it stands right now.
+  const unmentionedFiles = document.design ? findUnmentionedFiles(document.sections, collected.files) : [];
+  if (unmentionedFiles.length) {
+    warnings.push(`${unmentionedFiles.length} changed file${unmentionedFiles.length === 1 ? "" : "s"} not mentioned in any section: ${unmentionedFiles.slice(0, 5).join(", ")}${unmentionedFiles.length > 5 ? ", …" : ""}.`);
+  }
+  const unsupportedCriteriaIds = document.design ? findUnsupportedCriteria(document.design, new Set(unresolvedReferenceIds)) : [];
+  for (const id of unsupportedCriteriaIds) {
+    warnings.push(`${id}: marked verified, but none of its evidence resolves against the current diff.`);
+  }
+
   if (collected.files.length === 0) warnings.push("No code changes were found between the selected base and the working tree.");
   if (document.git.initialWorkingTree?.clean === false) warnings.push("The review was generated from an initially dirty working tree.");
   const label = errors.length ? "invalid" : warnings.length ? "valid with warnings" : "valid";
@@ -270,7 +283,45 @@ function validateReview({ reportOnly = false, options = {}, allowDiffOnly = fals
   [...new Set(warnings)].forEach((warning) => console.log(`  Warning: ${warning}`));
   errors.forEach((error) => console.error(`  Error: ${error}`));
   if (errors.length && !reportOnly) process.exitCode = 1;
-  return { document, collected, errors, warnings: [...new Set(warnings)], unresolvedReferenceIds: [...new Set(unresolvedReferenceIds)], base, context };
+  return {
+    document,
+    collected,
+    errors,
+    warnings: [...new Set(warnings)],
+    unresolvedReferenceIds: [...new Set(unresolvedReferenceIds)],
+    unmentionedFiles,
+    unsupportedCriteriaIds,
+    base,
+    context,
+  };
+}
+
+function findUnmentionedFiles(sections, files) {
+  const mentioned = new Set();
+  for (const section of sections) {
+    for (const reference of section.references) {
+      mentioned.add(reference.file);
+    }
+  }
+  return files
+    .filter((file) => !file.lockfile && !file.generated)
+    .filter((file) => !mentioned.has(file.path) && !(file.previousPath && mentioned.has(file.previousPath)))
+    .map((file) => file.path);
+}
+
+function findUnsupportedCriteria(design, unresolvedReferenceIds) {
+  return design.acceptanceCriteria
+    .filter((criterion) => criterion.status === "verified")
+    .filter((criterion) => !criterion.evidence.some((evidence) => criterionEvidenceHolds(evidence, unresolvedReferenceIds)))
+    .map((criterion) => criterion.id);
+}
+
+function criterionEvidenceHolds(evidence, unresolvedReferenceIds) {
+  if (evidence.referenceId) return !unresolvedReferenceIds.has(evidence.referenceId);
+  // No reference to check against the diff: a test or benchmark command is
+  // trustworthy only because the schema already required it to have run and
+  // passed. Free-text manual or design evidence has nothing falsifiable at all.
+  return (evidence.type === "test" || evidence.type === "benchmark") && Boolean(evidence.command);
 }
 
 function init() {
@@ -301,7 +352,12 @@ function render(options) {
     fingerprint: result.collected.fingerprint,
     filesChanged: result.collected.files.length,
     stats: result.collected.stats,
-    validation: { warnings: result.warnings, unresolvedReferenceIds: result.unresolvedReferenceIds },
+    validation: {
+      warnings: result.warnings,
+      unresolvedReferenceIds: result.unresolvedReferenceIds,
+      unmentionedFiles: result.unmentionedFiles,
+      unsupportedCriteriaIds: result.unsupportedCriteriaIds,
+    },
   };
   writeFileSync(join(renderDir, "review.json"), `${JSON.stringify(reviewDocument, null, 2)}\n`);
   const renderedFiles = attachReviewReferences(reviewDocument, result.collected.files);
